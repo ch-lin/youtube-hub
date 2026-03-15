@@ -23,6 +23,7 @@
  *===========================================================================*/
 package ch.lin.youtube.hub.backend.api.app.repository;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -125,4 +126,21 @@ public interface ItemRepository extends JpaRepository<Item, Long>, JpaSpecificat
     List<Item> findByTagAndVideoIdNotAndDownloadInfosFileSize(@Param("tag") Tag tag, @Param("videoId") String videoId,
             @Param("fileSize") long fileSize);
 
+    /**
+     * Finds items published after a specific date and time.
+     *
+     * @param publishedAfter The cutoff date and time.
+     * @return A list of items published after the given time.
+     */
+    List<Item> findAllByVideoPublishedAtAfter(OffsetDateTime publishedAfter);
+
+    /**
+     * Finds items published after a specific date and time, filtered by a list
+     * of channel IDs.
+     *
+     * @param publishedAfter The cutoff date and time.
+     * @param channelIds A list of YouTube channel IDs.
+     * @return A list of matching items.
+     */
+    List<Item> findAllByVideoPublishedAtAfterAndPlaylistChannelChannelIdIn(OffsetDateTime publishedAfter, List<String> channelIds);
 }

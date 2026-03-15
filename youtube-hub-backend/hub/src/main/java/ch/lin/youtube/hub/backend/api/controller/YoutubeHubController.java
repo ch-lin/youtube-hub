@@ -35,6 +35,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import ch.lin.platform.api.ApiResponse;
@@ -216,6 +217,35 @@ public class YoutubeHubController {
             @RequestHeader(value = "Authorization", required = false) final String authorizationHeader) {
         Map<String, Object> result = youtubeHubService.downloadItems(request.getVideoIds(),
                 request.getConfigName(), authorizationHeader);
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    /**
+     * Manually triggers the synchronization of statistics for recent active
+     * videos.
+     *
+     * @param channelIds Optional list of channel IDs to limit the scope of the
+     * sync. If not provided, statistics for all active videos will be synced.
+     * @return A {@link ResponseEntity} containing an {@link ApiResponse} with a
+     * map of the sync results (e.g., number of synced items) and an HTTP 200 OK
+     * status.
+     * <p>
+     * Example cURL requests:
+     *
+     * <pre>
+     * {@code
+     * # Sync statistics for all active videos
+     * curl -X POST http://localhost:8080/tasks/sync-statistics
+     *
+     * # Sync statistics for specific channels
+     * curl -X POST "http://localhost:8080/tasks/sync-statistics?channelIds=UC_x5XG1OV2P6uZZ5FSM9Ttw,UC-lHJZR3Gqxm24_Vd_AJ5Yw"
+     * }
+     * </pre>
+     */
+    @PostMapping(value = "/sync-statistics", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ApiResponse<Map<String, Object>>> triggerStatisticsSync(
+            @RequestParam(name = "channelIds", required = false) List<String> channelIds) {
+        Map<String, Object> result = youtubeHubService.syncActiveVideosStatistics(channelIds);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 }

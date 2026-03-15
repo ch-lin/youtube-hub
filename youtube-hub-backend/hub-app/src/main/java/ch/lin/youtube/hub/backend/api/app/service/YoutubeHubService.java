@@ -102,4 +102,16 @@ public interface YoutubeHubService {
      */
     Map<String, Object> downloadItems(List<String> videoIds, String configName, String authorizationHeader);
 
+    /**
+     * Synchronizes the statistics of recently active videos. Retrieves videos
+     * published within the last 30 days from the database, batches them in
+     * groups of up to 50, and calls the YouTube Data API to update their view,
+     * like, and comment counts.
+     *
+     * @param channelIds an optional list of channel IDs to filter the active
+     * videos
+     * @return a map containing the results of the sync operation, such as the
+     * total number of synced videos.
+     */
+    Map<String, Object> syncActiveVideosStatistics(List<String> channelIds);
 }

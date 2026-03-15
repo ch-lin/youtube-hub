@@ -644,6 +644,28 @@ class ChannelServiceImplTest {
         }
     }
 
+    @Test
+    void addChannelsByUrl_ShouldHandleHttpException_When400WithNullMessage() {
+        String url = "https://www.youtube.com/@test";
+
+        try (MockedConstruction<HttpClient> mocked = mockConstruction(HttpClient.class,
+                (mock, context) -> {
+                    ch.lin.platform.http.exception.HttpException mockException = org.mockito.Mockito.mock(ch.lin.platform.http.exception.HttpException.class);
+                    when(mockException.getStatusCode()).thenReturn(400);
+                    when(mockException.getMessage()).thenReturn(null);
+                    when(mock.get(anyString(), anyMap(), any()))
+                            .thenThrow(mockException);
+                })) {
+
+            AddChannelsResult result = channelService.addChannelsByUrl("key", null, List.of(url));
+
+            assertThat(result.getAddedChannels()).isEmpty();
+            assertThat(result.getFailedUrls()).hasSize(1);
+            assertThat(result.getFailedUrls().get(0).getReason()).contains("Could not fetch channel info");
+            assertThat(mocked.constructed()).hasSize(1);
+        }
+    }
+
     @SuppressWarnings("null")
     @Test
     void addChannelsByUrl_ShouldSucceed_WhenConfigNameMatches() {
@@ -763,6 +785,26 @@ class ChannelServiceImplTest {
                     // Status 400 but different message
                     when(mock.get(anyString(), anyMap(), any()))
                             .thenThrow(new ch.lin.platform.http.exception.HttpException("GET", 400, "Bad Request"));
+                })) {
+
+            assertThatThrownBy(() -> channelService.getChannelDetailsFromApi(channelId, "key", null))
+                    .isInstanceOf(ch.lin.youtube.hub.backend.api.common.exception.YoutubeApiRequestException.class)
+                    .hasMessageContaining("An internal error occurred");
+            assertThat(mocked.constructed()).hasSize(1);
+        }
+    }
+
+    @Test
+    void getChannelDetailsFromApi_ShouldThrowRequestException_WhenHttpException400WithNullMessage() {
+        String channelId = "UC123";
+
+        try (MockedConstruction<HttpClient> mocked = mockConstruction(HttpClient.class,
+                (mock, context) -> {
+                    ch.lin.platform.http.exception.HttpException mockException = org.mockito.Mockito.mock(ch.lin.platform.http.exception.HttpException.class);
+                    when(mockException.getStatusCode()).thenReturn(400);
+                    when(mockException.getMessage()).thenReturn(null);
+                    when(mock.get(anyString(), anyMap(), any()))
+                            .thenThrow(mockException);
                 })) {
 
             assertThatThrownBy(() -> channelService.getChannelDetailsFromApi(channelId, "key", null))

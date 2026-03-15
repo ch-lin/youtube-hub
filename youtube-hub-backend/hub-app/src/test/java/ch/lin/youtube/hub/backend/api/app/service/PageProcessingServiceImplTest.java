@@ -24,6 +24,7 @@
 package ch.lin.youtube.hub.backend.api.app.service;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.time.OffsetDateTime;
 import java.util.Collections;
 import java.util.List;
@@ -424,6 +425,36 @@ class PageProcessingServiceImplTest {
 
         when(httpClient.get(any(), anyMap(), any()))
                 .thenThrow(new HttpException("GET", 400, "Bad Request"));
+
+        assertThatThrownBy(() -> service.processSinglePage("PL123", null, httpClient, "key", null, 0, 100, 10))
+                .isInstanceOf(YoutubeApiRequestException.class)
+                .hasMessageContaining("Failed to process page");
+    }
+
+    @Test
+    void processSinglePage_ShouldThrowRequestException_WhenHttpException400WithNullMessage() throws Exception {
+        when(playlistRepository.findByPlaylistId("PL123")).thenReturn(Optional.of(new Playlist()));
+        when(youtubeApiUsageService.hasSufficientQuota(anyLong(), anyLong())).thenReturn(true);
+
+        HttpException mockException = org.mockito.Mockito.mock(HttpException.class);
+        when(mockException.getStatusCode()).thenReturn(400);
+        when(mockException.getMessage()).thenReturn(null);
+
+        when(httpClient.get(any(), anyMap(), any()))
+                .thenThrow(mockException);
+
+        assertThatThrownBy(() -> service.processSinglePage("PL123", null, httpClient, "key", null, 0, 100, 10))
+                .isInstanceOf(YoutubeApiRequestException.class)
+                .hasMessageContaining("Failed to process page");
+    }
+
+    @Test
+    void processSinglePage_ShouldThrowRequestException_WhenURISyntaxException() throws Exception {
+        when(playlistRepository.findByPlaylistId("PL123")).thenReturn(Optional.of(new Playlist()));
+        when(youtubeApiUsageService.hasSufficientQuota(anyLong(), anyLong())).thenReturn(true);
+
+        when(httpClient.get(any(), anyMap(), any()))
+                .thenThrow(new URISyntaxException("input", "reason"));
 
         assertThatThrownBy(() -> service.processSinglePage("PL123", null, httpClient, "key", null, 0, 100, 10))
                 .isInstanceOf(YoutubeApiRequestException.class)

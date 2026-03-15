@@ -203,6 +203,9 @@ public class AutoFetchSchedulerServiceImpl implements AutoFetchSchedulerService 
                     false, // forcePublishedAfter
                     null // channelIds (null means all channels)
             );
+
+            // Execute the background job to synchronize statistics for older active videos
+            youtubeHubService.syncActiveVideosStatistics(null);
         } catch (Exception e) {
             logger.error("Error occurred during scheduled auto-fetch job execution.", e);
         }

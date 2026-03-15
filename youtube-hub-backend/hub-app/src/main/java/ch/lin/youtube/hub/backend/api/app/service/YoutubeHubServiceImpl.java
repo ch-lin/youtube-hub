@@ -60,6 +60,7 @@ import ch.lin.youtube.hub.backend.api.app.repository.TagRepository;
 import ch.lin.youtube.hub.backend.api.app.service.model.DownloadItem;
 import ch.lin.youtube.hub.backend.api.app.service.model.PlaylistProcessingResult;
 import ch.lin.youtube.hub.backend.api.common.exception.QuotaExceededException;
+import ch.lin.youtube.hub.backend.api.common.exception.YoutubeApiAuthException;
 import ch.lin.youtube.hub.backend.api.common.exception.YoutubeApiRequestException;
 import ch.lin.youtube.hub.backend.api.domain.model.Channel;
 import ch.lin.youtube.hub.backend.api.domain.model.DownloadInfo;
@@ -93,6 +94,7 @@ public class YoutubeHubServiceImpl implements YoutubeHubService {
     private final DownloadInfoRepository downloadInfoRepository;
     private final ConfigsService configsService;
     private final ChannelProcessingService channelProcessingService;
+    private final VideoFetchService videoFetchService;
     @Value("${youtube.hub.downloader.url}")
     private String downloaderServiceUrl;
 
@@ -110,7 +112,7 @@ public class YoutubeHubServiceImpl implements YoutubeHubService {
     public YoutubeHubServiceImpl(ChannelRepository channelRepository, ItemRepository itemRepository,
             PlaylistRepository playlistRepository, TagRepository tagRepository,
             DownloadInfoRepository downloadInfoRepository, ConfigsService configsService,
-            ChannelProcessingService channelProcessingService) {
+            ChannelProcessingService channelProcessingService, VideoFetchService videoFetchService) {
         this.channelRepository = channelRepository;
         this.itemRepository = itemRepository;
         this.playlistRepository = playlistRepository;
@@ -118,6 +120,7 @@ public class YoutubeHubServiceImpl implements YoutubeHubService {
         this.downloadInfoRepository = downloadInfoRepository;
         this.configsService = configsService;
         this.channelProcessingService = channelProcessingService;
+        this.videoFetchService = videoFetchService;
     }
 
     /**
@@ -484,5 +487,72 @@ public class YoutubeHubServiceImpl implements YoutubeHubService {
                     e);
             throw new YoutubeApiRequestException("Failed to call downloader service", e);
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Retrieves videos published within the last 30 days from the database,
+     * batches them in groups of up to 50, and explicitly calls the YouTube Data
+     * API to update their statistics.
+     */
+    @Override
+    public Map<String, Object> syncActiveVideosStatistics(List<String> channelIds) {
+        String channelLog = (channelIds != null && !channelIds.isEmpty()) ? " for specific channels" : "";
+        logger.info("Starting background job to sync statistics for active videos{}...", channelLog);
+
+        // 1. Identify target: fetch videos published in the last 30 days
+        OffsetDateTime threshold = OffsetDateTime.now().minusDays(30);
+        List<Item> activeItems;
+        if (channelIds != null && !channelIds.isEmpty()) {
+            activeItems = itemRepository.findAllByVideoPublishedAtAfterAndPlaylistChannelChannelIdIn(threshold, channelIds);
+        } else {
+            activeItems = itemRepository.findAllByVideoPublishedAtAfter(threshold);
+        }
+
+        if (activeItems.isEmpty()) {
+            logger.info("No active videos found in the last 30 days. Skipping stats sync.");
+            return Map.of("syncedItems", 0);
+        }
+
+        logger.info("Found {} active videos to sync. Preparing batch process...", activeItems.size());
+
+        // 2. Prepare configurations and API Client
+        HubConfig config = configsService.getResolvedConfig(null);
+        String apiKey = config.getYoutubeApiKey();
+        long quotaLimit = config.getQuota();
+        long quotaThreshold = config.getQuotaSafetyThreshold();
+        long delay = 100L; // Safety delay between batches
+
+        int totalUpdated = 0;
+        int batchSize = 50; // YouTube API limits up to 50 IDs per request
+
+        try (HttpClient client = new HttpClient(Scheme.HTTPS, "youtube.googleapis.com", 443)) {
+            // 3. Partition the list and send in batches of 50
+            for (int i = 0; i < activeItems.size(); i += batchSize) {
+                int end = Math.min(i + batchSize, activeItems.size());
+                List<Item> batch = activeItems.subList(i, end);
+
+                try {
+                    int updated = videoFetchService.syncStatisticsForItems(client, apiKey, batch, delay, quotaLimit, quotaThreshold);
+                    totalUpdated += updated;
+                } catch (YoutubeApiRequestException e) {
+                    logger.error("Failed to sync statistics for batch starting at index {}", i, e);
+                    // Continue processing the next batch even if this one fails
+                } catch (QuotaExceededException | YoutubeApiAuthException e) {
+                    logger.error("Sync statistics job stopped early: Quota exceeded or API key invalid.", e);
+                    break; // Stop processing further batches
+                } catch (InterruptedException e) {
+                    logger.error("Sync statistics job was interrupted.", e);
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        } catch (IOException e) {
+            logger.error("Failed to initialize HttpClient for statistics sync", e);
+        }
+
+        logger.info("Successfully synced statistics for {} videos.", totalUpdated);
+        return Map.of("syncedItems", totalUpdated);
     }
 }

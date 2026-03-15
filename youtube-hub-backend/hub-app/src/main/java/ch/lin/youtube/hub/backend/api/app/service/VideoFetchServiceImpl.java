@@ -14,6 +14,7 @@ import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -26,6 +27,7 @@ import ch.lin.youtube.hub.backend.api.common.exception.QuotaExceededException;
 import ch.lin.youtube.hub.backend.api.common.exception.YoutubeApiAuthException;
 import ch.lin.youtube.hub.backend.api.common.exception.YoutubeApiRequestException;
 import ch.lin.youtube.hub.backend.api.domain.model.Item;
+import ch.lin.youtube.hub.backend.api.domain.model.ItemStatisticHistory;
 import ch.lin.youtube.hub.backend.api.domain.model.LiveBroadcastContent;
 
 /**
@@ -65,7 +67,7 @@ public class VideoFetchServiceImpl implements VideoFetchService {
         String videoIds = String.join(",", newVideoSnippets.keySet());
 
         Map<String, String> params = new HashMap<>();
-        params.put("part", "snippet,liveStreamingDetails");
+        params.put("part", "snippet,liveStreamingDetails,statistics");
         params.put("id", videoIds);
         params.put("key", apiKey);
         params.put("maxResults", "50");
@@ -114,13 +116,16 @@ public class VideoFetchServiceImpl implements VideoFetchService {
                     newItem.setScheduledStartTime(OffsetDateTime.parse(scheduledTimeStr));
                 }
 
+                // Add statistics history
+                appendStatisticsHistory(newItem, videoItemNode);
+
                 logger.info("    -> Creating new video: '{}' ({}) published at {} with status {}",
                         newItem.getTitle(), videoId, newItem.getVideoPublishedAt(), newItem.getLiveBroadcastContent());
                 newItems.add(newItem);
             }
         } catch (IOException | URISyntaxException e) {
             if (e instanceof HttpException && ((HttpException) e).getStatusCode() == 400
-                    && e.getMessage().contains("API key not valid")) {
+                    && e.getMessage() != null && e.getMessage().contains("API key not valid")) {
                 throw new YoutubeApiAuthException("The provided YouTube API key is not valid.", e);
             }
             throw new YoutubeApiRequestException("Failed to fetch video details from YouTube API for video IDs: " + videoIds, e);
@@ -132,6 +137,7 @@ public class VideoFetchServiceImpl implements VideoFetchService {
      * {@inheritDoc}
      */
     @Override
+    @Transactional
     public int updateExistingItems(HttpClient client, String apiKey, List<Item> existingItemsToUpdate,
             long delayInMilliseconds, long quotaLimit, long quotaThreshold) throws InterruptedException {
 
@@ -144,7 +150,7 @@ public class VideoFetchServiceImpl implements VideoFetchService {
         String videoIds = String.join(",", videoIdsList);
 
         Map<String, String> params = new HashMap<>();
-        params.put("part", "snippet,liveStreamingDetails");
+        params.put("part", "snippet,liveStreamingDetails,statistics");
         params.put("id", videoIds);
         params.put("key", apiKey);
         params.put("maxResults", "50");
@@ -215,6 +221,11 @@ public class VideoFetchServiceImpl implements VideoFetchService {
                     }
                 }
 
+                // Always add a new statistics history record
+                if (appendStatisticsHistory(existingItem, videoItemNode)) {
+                    updated = true;
+                }
+
                 if (updated) {
                     itemRepository.save(existingItem);
                     updatedCount++;
@@ -222,10 +233,79 @@ public class VideoFetchServiceImpl implements VideoFetchService {
             }
         } catch (IOException | URISyntaxException e) {
             if (e instanceof HttpException && ((HttpException) e).getStatusCode() == 400
-                    && e.getMessage().contains("API key not valid")) {
+                    && e.getMessage() != null && e.getMessage().contains("API key not valid")) {
                 throw new YoutubeApiAuthException("The provided YouTube API key is not valid.", e);
             }
             throw new YoutubeApiRequestException("Failed to fetch video details for update check from YouTube API for video IDs: " + videoIds, e);
+        }
+        return updatedCount;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional
+    public int syncStatisticsForItems(HttpClient client, String apiKey, List<Item> itemsToUpdate,
+            long delayInMilliseconds, long quotaLimit, long quotaThreshold) throws InterruptedException {
+
+        if (itemsToUpdate.isEmpty()) {
+            return 0;
+        }
+
+        int updatedCount = 0;
+        List<String> videoIdsList = itemsToUpdate.stream().map(Item::getVideoId).toList();
+        String videoIds = String.join(",", videoIdsList);
+
+        Map<String, String> params = new HashMap<>();
+        // Only fetch statistics to save quota and bandwidth
+        params.put("part", "statistics");
+        params.put("id", videoIds);
+        params.put("key", apiKey);
+        params.put("maxResults", "50");
+
+        try {
+            checkQuota(quotaLimit, quotaThreshold);
+            delayRequest(delayInMilliseconds);
+
+            // Quota cost: 1 unit for videos.list operation
+            youtubeApiUsageService.recordUsage(1L);
+            logger.debug("    -> Syncing statistics only for video IDs {}.", videoIds);
+
+            String responseBody = client.get("/youtube/v3/videos", params, null).body();
+            JsonNode root = OBJECT_MAPPER.readTree(responseBody);
+            JsonNode videoItemsNode = root.path("items");
+
+            if (videoItemsNode.isMissingNode() || !videoItemsNode.isArray()) {
+                logger.warn("    -> No statistics found for video IDs: {}", videoIds);
+                return 0;
+            }
+
+            // Re-fetch items within the current transaction to ensure they are managed
+            // and avoid LazyInitializationException when accessing lazy collections.
+            List<Item> managedItems = itemRepository.findAllByVideoIdIn(videoIdsList);
+
+            for (JsonNode videoItemNode : videoItemsNode) {
+                String videoId = videoItemNode.path("id").asText();
+                Optional<Item> itemOptional = managedItems.stream()
+                        .filter(item -> item.getVideoId().equals(videoId)).findFirst();
+
+                if (itemOptional.isEmpty()) {
+                    continue;
+                }
+
+                Item existingItem = itemOptional.get();
+                if (appendStatisticsHistory(existingItem, videoItemNode)) {
+                    itemRepository.save(Objects.requireNonNull(existingItem));
+                    updatedCount++;
+                }
+            }
+        } catch (IOException | URISyntaxException e) {
+            if (e instanceof HttpException && ((HttpException) e).getStatusCode() == 400
+                    && e.getMessage() != null && e.getMessage().contains("API key not valid")) {
+                throw new YoutubeApiAuthException("The provided YouTube API key is not valid.", e);
+            }
+            throw new YoutubeApiRequestException("Failed to fetch statistics from YouTube API for video IDs: " + videoIds, e);
         }
         return updatedCount;
     }
@@ -280,5 +360,28 @@ public class VideoFetchServiceImpl implements VideoFetchService {
             }
         }
         return null;
+    }
+
+    /**
+     * Extracts statistics from the video item JSON node and appends them to the
+     * Item's history.
+     *
+     * @param item The Item entity to update.
+     * @param videoItemNode The API response node for the video.
+     * @return true if statistics were found and appended, false otherwise.
+     */
+    private boolean appendStatisticsHistory(Item item, JsonNode videoItemNode) {
+        JsonNode statisticsNode = videoItemNode.path("statistics");
+        if (!statisticsNode.isMissingNode()) {
+            ItemStatisticHistory history = new ItemStatisticHistory();
+            history.setItem(item);
+            history.setRecordedAt(OffsetDateTime.now());
+            history.setViewCount(statisticsNode.path("viewCount").asLong(0L));
+            history.setLikeCount(statisticsNode.path("likeCount").asLong(0L));
+            history.setCommentCount(statisticsNode.path("commentCount").asLong(0L));
+            item.getStatistics().add(history);
+            return true;
+        }
+        return false;
     }
 }

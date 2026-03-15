@@ -162,4 +162,21 @@ class YoutubeHubControllerTest {
         assertThat(body).isNotNull();
         assertThat(body.getData()).isEqualTo(serviceResult);
     }
+
+    @Test
+    void triggerStatisticsSync_ShouldCallServiceAndReturnResult() {
+        Map<String, Object> serviceResult = Map.of("syncedItems", 15);
+        List<String> channelIds = List.of("ch1");
+        when(youtubeHubService.syncActiveVideosStatistics(channelIds)).thenReturn(serviceResult);
+
+        ResponseEntity<ApiResponse<Map<String, Object>>> response = youtubeHubController.triggerStatisticsSync(channelIds);
+        ApiResponse<Map<String, Object>> body = response.getBody();
+        Objects.requireNonNull(body);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(body).isNotNull();
+        assertThat(body.getData()).isEqualTo(serviceResult);
+
+        verify(youtubeHubService).syncActiveVideosStatistics(channelIds);
+    }
 }

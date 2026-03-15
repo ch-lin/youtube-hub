@@ -333,6 +333,24 @@ class ChannelProcessingServiceImplTest {
     }
 
     @Test
+    void prepareChannelAndPlaylist_ShouldThrowRequestException_WhenHttpException400WithNullMessage() throws Exception {
+        Channel channel = new Channel();
+        channel.setChannelId("UC123");
+
+        when(youtubeApiUsageService.hasSufficientQuota(anyLong(), anyLong())).thenReturn(true);
+        HttpException mockException = org.mockito.Mockito.mock(HttpException.class);
+        when(mockException.getStatusCode()).thenReturn(400);
+        when(mockException.getMessage()).thenReturn(null);
+
+        when(httpClient.get(anyString(), anyMap(), any()))
+                .thenThrow(mockException);
+
+        assertThatThrownBy(() -> service.prepareChannelAndPlaylist(channel, httpClient, "key", 0, 100, 10))
+                .isInstanceOf(YoutubeApiRequestException.class)
+                .hasMessageContaining("Failed to fetch channel details");
+    }
+
+    @Test
     void prepareChannelAndPlaylist_ShouldThrowRequestException_WhenHttpException500() throws Exception {
         Channel channel = new Channel();
         channel.setChannelId("UC123");

@@ -66,9 +66,9 @@ class ItemTest {
         tag = new Tag();
 
         item1 = new Item(videoId, title, description, kind, videoPublishedAt, liveBroadcastContent, scheduledStartTime,
-                thumbnailUrl, status, playlist, tag, null);
+                thumbnailUrl, status, playlist, tag, null, null);
         item2 = new Item(videoId, title, description, kind, videoPublishedAt, liveBroadcastContent, scheduledStartTime,
-                thumbnailUrl, status, playlist, tag, null);
+                thumbnailUrl, status, playlist, tag, null, null);
     }
 
     @Test

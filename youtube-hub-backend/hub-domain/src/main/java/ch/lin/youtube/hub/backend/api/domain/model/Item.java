@@ -229,4 +229,11 @@ public class Item extends BaseEntity {
      */
     @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private Set<DownloadInfo> downloadInfos = new HashSet<>();
+
+    /**
+     * A set of {@link ItemStatisticHistory} records associated with this item.
+     * This tracks the historical statistics (views, likes) over time.
+     */
+    @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private Set<ItemStatisticHistory> statistics = new HashSet<>();
 }

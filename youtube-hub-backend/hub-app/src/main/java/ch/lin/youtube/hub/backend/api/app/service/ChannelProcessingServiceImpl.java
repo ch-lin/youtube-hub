@@ -191,7 +191,7 @@ public class ChannelProcessingServiceImpl implements ChannelProcessingService {
                 Thread.currentThread().interrupt();
             }
             if (e instanceof HttpException && ((HttpException) e).getStatusCode() == 400
-                    && e.getMessage().contains("API key not valid")) {
+                    && e.getMessage() != null && e.getMessage().contains("API key not valid")) {
                 throw new YoutubeApiAuthException("The provided YouTube API key is not valid.", e);
             }
             logger.error("Failed to fetch channel details from YouTube API for channelId {}: {}", channelId,

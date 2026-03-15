@@ -198,7 +198,7 @@ public class PageProcessingServiceImpl implements PageProcessingService {
                 Thread.currentThread().interrupt();
             }
             if (e instanceof HttpException && ((HttpException) e).getStatusCode() == 400
-                    && e.getMessage().contains("API key not valid")) {
+                    && e.getMessage() != null && e.getMessage().contains("API key not valid")) {
                 throw new YoutubeApiAuthException("The provided YouTube API key is not valid.", e);
             }
             throw new YoutubeApiRequestException("Failed to process page for playlist " + playlistId, e);
