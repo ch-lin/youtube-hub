@@ -25,6 +25,7 @@ package ch.lin.youtube.hub.backend.api.app.service;
 
 import java.io.IOException;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -48,6 +49,7 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -96,6 +98,8 @@ class YoutubeHubServiceImplTest {
     private ConfigsService configsService;
     @Mock
     private ChannelProcessingService channelProcessingService;
+    @Mock
+    private VideoFetchService videoFetchService;
 
     private YoutubeHubServiceImpl service;
 
@@ -103,7 +107,7 @@ class YoutubeHubServiceImplTest {
     @SuppressWarnings("unused")
     void setUp() {
         service = new YoutubeHubServiceImpl(channelRepository, itemRepository, playlistRepository, tagRepository,
-                downloadInfoRepository, configsService, channelProcessingService);
+                downloadInfoRepository, configsService, channelProcessingService, videoFetchService);
         ReflectionTestUtils.setField(service, "downloaderServiceUrl", "http://localhost:8081");
     }
 
@@ -602,7 +606,6 @@ class YoutubeHubServiceImplTest {
     }
 
     @Test
-    @SuppressWarnings({"unused"})
     void processJob_ShouldStopEarly_WhenQuotaExceeded() {
         HubConfig config = new HubConfig();
         config.setYoutubeApiKey("test-key");
@@ -624,11 +627,11 @@ class YoutubeHubServiceImplTest {
             assertThat(result.get("processedChannels")).isEqualTo(0);
             // Verify second channel was NOT processed
             verify(channelProcessingService, never()).prepareChannelAndPlaylist(eq(channel2), any(), anyString(), anyLong(), anyLong(), anyLong());
+            assertThat(mocked.constructed()).hasSize(1);
         }
     }
 
     @Test
-    @SuppressWarnings({"unused"})
     void processJob_ShouldHandleChannelFailure_AndContinue() {
         HubConfig config = new HubConfig();
         config.setYoutubeApiKey("test-key");
@@ -659,6 +662,7 @@ class YoutubeHubServiceImplTest {
             assertThat(failures).hasSize(1);
             assertThat(failures.get(0).get("channelId")).isEqualTo("ch1");
             assertThat(failures.get(0).get("reason")).contains("API Error");
+            assertThat(mocked.constructed()).hasSize(1);
         }
     }
 
@@ -668,13 +672,14 @@ class YoutubeHubServiceImplTest {
         config.setYoutubeApiKey("key");
         when(configsService.getResolvedConfig(null)).thenReturn(config);
 
-        try (@SuppressWarnings("unused") MockedConstruction<HttpClient> mocked = mockConstruction(HttpClient.class,
+        try (MockedConstruction<HttpClient> mocked = mockConstruction(HttpClient.class,
                 (mock, context) -> {
                     doThrow(new IOException("Close failed")).when(mock).close();
                 })) {
             assertThatThrownBy(() -> service.processJob(null, null, 100L, null, false, null))
                     .isInstanceOf(YoutubeApiRequestException.class)
                     .hasMessageContaining("An I/O error occurred with the YouTube API client");
+            assertThat(mocked.constructed()).hasSize(1);
         }
     }
 
@@ -1056,5 +1061,164 @@ class YoutubeHubServiceImplTest {
             verify(client).post(eq("/download"), any(), anyString(), headersCaptor.capture());
             assertThat(headersCaptor.getValue()).doesNotContainKey("Authorization");
         }
+    }
+
+    @Test
+    void syncActiveVideosStatistics_ShouldReturnZero_WhenNoActiveItemsFound() {
+        when(itemRepository.findAllByVideoPublishedAtAfter(any(OffsetDateTime.class)))
+                .thenReturn(Collections.emptyList());
+
+        Map<String, Object> result = service.syncActiveVideosStatistics(null);
+
+        assertThat(result.get("syncedItems")).isEqualTo(0);
+        verify(configsService, never()).getResolvedConfig(any());
+    }
+
+    @Test
+    void syncActiveVideosStatistics_ShouldSyncInBatches() throws Exception {
+        List<Item> items = new ArrayList<>();
+        for (int i = 0; i < 60; i++) {
+            items.add(new Item()); // 60 items to test batching of 50 and 10
+        }
+        when(itemRepository.findAllByVideoPublishedAtAfter(any(OffsetDateTime.class))).thenReturn(items);
+
+        HubConfig config = new HubConfig();
+        config.setYoutubeApiKey("test-key");
+        config.setQuota(10000L);
+        config.setQuotaSafetyThreshold(500L);
+        when(configsService.getResolvedConfig(null)).thenReturn(config);
+
+        // First batch of 50, second batch of 10
+        when(videoFetchService.syncStatisticsForItems(any(), eq("test-key"), anyList(), eq(100L), eq(10000L), eq(500L)))
+                .thenReturn(50)
+                .thenReturn(10);
+
+        try (MockedConstruction<HttpClient> mocked = mockConstruction(HttpClient.class)) {
+            Map<String, Object> result = service.syncActiveVideosStatistics(null);
+
+            assertThat(result.get("syncedItems")).isEqualTo(60);
+            verify(videoFetchService, times(2)).syncStatisticsForItems(any(), anyString(), anyList(), anyLong(), anyLong(), anyLong());
+            assertThat(mocked.constructed()).hasSize(1);
+        }
+    }
+
+    @Test
+    void syncActiveVideosStatistics_ShouldContinue_WhenApiRequestExceptionOccurs() throws Exception {
+        List<Item> items = new ArrayList<>();
+        for (int i = 0; i < 60; i++) {
+            items.add(new Item());
+        }
+        when(itemRepository.findAllByVideoPublishedAtAfter(any(OffsetDateTime.class))).thenReturn(items);
+
+        HubConfig config = new HubConfig();
+        config.setYoutubeApiKey("test-key");
+        when(configsService.getResolvedConfig(null)).thenReturn(config);
+
+        // Force the first batch to throw an exception, and the second to succeed
+        when(videoFetchService.syncStatisticsForItems(any(), anyString(), anyList(), anyLong(), anyLong(), anyLong()))
+                .thenThrow(new YoutubeApiRequestException("API error on first batch"))
+                .thenReturn(10);
+
+        try (MockedConstruction<HttpClient> mocked = mockConstruction(HttpClient.class)) {
+            Map<String, Object> result = service.syncActiveVideosStatistics(null);
+
+            assertThat(result.get("syncedItems")).isEqualTo(10);
+            verify(videoFetchService, times(2)).syncStatisticsForItems(any(), anyString(), anyList(), anyLong(), anyLong(), anyLong());
+            assertThat(mocked.constructed()).hasSize(1);
+        }
+    }
+
+    @Test
+    void syncActiveVideosStatistics_ShouldBreak_WhenQuotaExceededOccurs() throws Exception {
+        List<Item> items = new ArrayList<>();
+        for (int i = 0; i < 60; i++) {
+            items.add(new Item());
+        }
+        when(itemRepository.findAllByVideoPublishedAtAfter(any(OffsetDateTime.class))).thenReturn(items);
+
+        HubConfig config = new HubConfig();
+        config.setYoutubeApiKey("test-key");
+        when(configsService.getResolvedConfig(null)).thenReturn(config);
+
+        when(videoFetchService.syncStatisticsForItems(any(), anyString(), anyList(), anyLong(), anyLong(), anyLong()))
+                .thenThrow(new QuotaExceededException("Quota exceeded on first batch"));
+
+        try (MockedConstruction<HttpClient> mocked = mockConstruction(HttpClient.class)) {
+            Map<String, Object> result = service.syncActiveVideosStatistics(null);
+
+            assertThat(result.get("syncedItems")).isEqualTo(0);
+            // The loop should break, so the service is only called once
+            verify(videoFetchService, times(1)).syncStatisticsForItems(any(), anyString(), anyList(), anyLong(), anyLong(), anyLong());
+            assertThat(mocked.constructed()).hasSize(1);
+        }
+    }
+
+    @Test
+    void syncActiveVideosStatistics_ShouldRestoreInterruptStatus_WhenInterruptedExceptionOccurs() throws Exception {
+        List<Item> items = List.of(new Item());
+        when(itemRepository.findAllByVideoPublishedAtAfter(any(OffsetDateTime.class))).thenReturn(items);
+        when(configsService.getResolvedConfig(null)).thenReturn(new HubConfig());
+        when(videoFetchService.syncStatisticsForItems(any(), any(), anyList(), anyLong(), anyLong(), anyLong()))
+                .thenThrow(new InterruptedException("Thread interrupted"));
+
+        try (MockedConstruction<HttpClient> mocked = mockConstruction(HttpClient.class)) {
+            service.syncActiveVideosStatistics(null);
+            assertThat(Thread.interrupted()).isTrue(); // Verifies the flag is set, and clears it
+            assertThat(mocked.constructed()).hasSize(1);
+        }
+    }
+
+    @Test
+    void syncActiveVideosStatistics_ShouldHandleIOException_FromHttpClient() {
+        List<Item> items = List.of(new Item());
+        when(itemRepository.findAllByVideoPublishedAtAfter(any(OffsetDateTime.class))).thenReturn(items);
+        when(configsService.getResolvedConfig(null)).thenReturn(new HubConfig());
+
+        try (MockedConstruction<HttpClient> mocked = mockConstruction(HttpClient.class, (mock, context) -> {
+            doThrow(new IOException("Close failed")).when(mock).close();
+        })) {
+            Map<String, Object> result = service.syncActiveVideosStatistics(null);
+            assertThat(result.get("syncedItems")).isEqualTo(0); // If close fails, the items might have been synced but let's just make sure it doesn't crash
+            assertThat(mocked.constructed()).hasSize(1);
+        }
+    }
+
+    @Test
+    void syncActiveVideosStatistics_ShouldFilterByChannelIds_WhenProvided() throws Exception {
+        List<Item> items = List.of(new Item());
+        List<String> channelIds = List.of("ch1");
+        when(itemRepository.findAllByVideoPublishedAtAfterAndPlaylistChannelChannelIdIn(any(OffsetDateTime.class), eq(channelIds)))
+                .thenReturn(items);
+
+        HubConfig config = new HubConfig();
+        config.setYoutubeApiKey("test-key");
+        when(configsService.getResolvedConfig(null)).thenReturn(config);
+        when(videoFetchService.syncStatisticsForItems(any(), anyString(), anyList(), anyLong(), anyLong(), anyLong())).thenReturn(1);
+
+        try (MockedConstruction<HttpClient> mocked = mockConstruction(HttpClient.class)) {
+            Map<String, Object> result = service.syncActiveVideosStatistics(channelIds);
+            assertThat(result.get("syncedItems")).isEqualTo(1);
+            assertThat(mocked.constructed()).hasSize(1);
+        }
+    }
+
+    @Test
+    void syncActiveVideosStatistics_ShouldNotFilter_WhenChannelIdsEmpty() throws Exception {
+        List<Item> items = List.of(new Item());
+        // Empty list should trigger the default non-filtered query
+        when(itemRepository.findAllByVideoPublishedAtAfter(any(OffsetDateTime.class))).thenReturn(items);
+
+        HubConfig config = new HubConfig();
+        config.setYoutubeApiKey("test-key");
+        when(configsService.getResolvedConfig(null)).thenReturn(config);
+        when(videoFetchService.syncStatisticsForItems(any(), anyString(), anyList(), anyLong(), anyLong(), anyLong())).thenReturn(1);
+
+        try (MockedConstruction<HttpClient> mocked = mockConstruction(HttpClient.class)) {
+            Map<String, Object> result = service.syncActiveVideosStatistics(Collections.emptyList());
+            assertThat(result.get("syncedItems")).isEqualTo(1);
+            assertThat(mocked.constructed()).hasSize(1);
+        }
+
+        verify(itemRepository, never()).findAllByVideoPublishedAtAfterAndPlaylistChannelChannelIdIn(any(), any());
     }
 }

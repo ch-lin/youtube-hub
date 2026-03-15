@@ -217,7 +217,7 @@ public class ChannelServiceImpl implements ChannelService {
             logger.warn("Could not parse 'id' or 'title' from YouTube API response for handle {}", handle);
         } catch (IOException | URISyntaxException e) {
             if (e instanceof HttpException && ((HttpException) e).getStatusCode() == 400
-                    && e.getMessage().contains("API key not valid")) {
+                    && e.getMessage() != null && e.getMessage().contains("API key not valid")) {
                 logger.error("The provided YouTube API key is not valid.", e);
                 throw new YoutubeApiAuthException("The provided YouTube API key is not valid.", e);
             }
@@ -281,7 +281,7 @@ public class ChannelServiceImpl implements ChannelService {
             return client.get("/youtube/v3/channels", params, null).body();
         } catch (IOException | URISyntaxException e) {
             if (e instanceof HttpException && ((HttpException) e).getStatusCode() == 400
-                    && e.getMessage().contains("API key not valid")) {
+                    && e.getMessage() != null && e.getMessage().contains("API key not valid")) {
                 logger.error("The provided YouTube API key is not valid.", e);
                 throw new YoutubeApiAuthException("The provided YouTube API key is not valid.", e);
             }

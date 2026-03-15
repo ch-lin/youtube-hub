@@ -64,4 +64,24 @@ public interface VideoFetchService {
      */
     int updateExistingItems(HttpClient client, String apiKey, List<Item> existingItemsToUpdate,
             long delayInMilliseconds, long quotaLimit, long quotaThreshold) throws InterruptedException;
+
+    /**
+     * Fetches statistics for a batch of existing video IDs from the YouTube
+     * Data API and updates the corresponding Item entities.
+     *
+     * @param client The reusable HttpClient for making the request.
+     * @param apiKey the YouTube Data API key
+     * @param itemsToUpdate a list of Item entities to update statistics for
+     * @param delayInMilliseconds the delay in milliseconds before making the
+     * API request
+     * @param quotaLimit the daily quota limit
+     * @param quotaThreshold the safety threshold for quota
+     * @return the number of items that were updated
+     * @throws InterruptedException if the thread is interrupted while sleeping.
+     * @throws QuotaExceededException if the daily quota limit is reached.
+     * @throws YoutubeApiAuthException if the API key is invalid.
+     * @throws YoutubeApiRequestException if the API call fails.
+     */
+    int syncStatisticsForItems(HttpClient client, String apiKey, List<Item> itemsToUpdate,
+            long delayInMilliseconds, long quotaLimit, long quotaThreshold) throws InterruptedException;
 }

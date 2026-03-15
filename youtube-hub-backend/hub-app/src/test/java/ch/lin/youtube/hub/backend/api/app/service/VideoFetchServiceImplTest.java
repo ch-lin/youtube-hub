@@ -329,6 +329,39 @@ class VideoFetchServiceImplTest {
     }
 
     @Test
+    void updateExistingItems_ShouldUpdate_WhenStatisticsPresent() throws Exception {
+        Item item = new Item();
+        item.setVideoId("v1");
+        item.setTitle("Title");
+        item.setLiveBroadcastContent(LiveBroadcastContent.NONE);
+
+        // 測試欄位都沒變，但有新的統計資料時，依然要標記為 updated = true
+        String responseBody = """
+            {
+                "items": [
+                    {
+                        "id": "v1",
+                        "snippet": {
+                            "title": "Title",
+                            "liveBroadcastContent": "none"
+                        },
+                        "statistics": {
+                            "viewCount": "100"
+                        }
+                    }
+                ]
+            }
+            """;
+        when(httpClient.get(eq("/youtube/v3/videos"), anyMap(), any())).thenReturn(new HttpClient.Response(200, responseBody));
+
+        int count = service.updateExistingItems(httpClient, "key", List.of(item), 0, 100, 10);
+
+        assertThat(count).isEqualTo(1);
+        assertThat(item.getStatistics()).hasSize(1);
+        verify(itemRepository).save(item);
+    }
+
+    @Test
     void updateExistingItems_ShouldHandleMissingItemsInResponse() throws Exception {
         Item item = new Item();
         item.setVideoId("v1");
@@ -398,8 +431,23 @@ class VideoFetchServiceImplTest {
     @Test
     void fetchAndCreateItems_ShouldThrowRequestException_WhenHttpException400ButNotAuth() throws Exception {
         Map<String, JsonNode> snippets = Map.of("v1", objectMapper.createObjectNode());
+        HttpException mockException = org.mockito.Mockito.mock(HttpException.class);
+        when(mockException.getStatusCode()).thenReturn(400);
+        when(mockException.getMessage()).thenReturn(null);
+
         when(httpClient.get(any(), any(), any()))
-                .thenThrow(new HttpException("GET", 400, "Bad Request"));
+                .thenThrow(mockException);
+
+        assertThatThrownBy(() -> service.fetchAndCreateItemsFromVideoIds(httpClient, "key", snippets, 0, 100, 10))
+                .isInstanceOf(YoutubeApiRequestException.class)
+                .hasMessageContaining("Failed to fetch video details");
+    }
+
+    @Test
+    void fetchAndCreateItems_ShouldThrowRequestException_WhenHttpException400WithDifferentMessage() throws Exception {
+        Map<String, JsonNode> snippets = Map.of("v1", objectMapper.createObjectNode());
+        when(httpClient.get(any(), any(), any()))
+                .thenThrow(new HttpException("GET", 400, "Bad Request: Missing parameter"));
 
         assertThatThrownBy(() -> service.fetchAndCreateItemsFromVideoIds(httpClient, "key", snippets, 0, 100, 10))
                 .isInstanceOf(YoutubeApiRequestException.class)
@@ -443,8 +491,24 @@ class VideoFetchServiceImplTest {
     void updateExistingItems_ShouldThrowRequestException_WhenHttpException400ButNotAuth() throws Exception {
         Item item = new Item();
         item.setVideoId("v1");
+        HttpException mockException = org.mockito.Mockito.mock(HttpException.class);
+        when(mockException.getStatusCode()).thenReturn(400);
+        when(mockException.getMessage()).thenReturn(null);
+
         when(httpClient.get(any(), any(), any()))
-                .thenThrow(new HttpException("GET", 400, "Bad Request"));
+                .thenThrow(mockException);
+
+        assertThatThrownBy(() -> service.updateExistingItems(httpClient, "key", List.of(item), 0, 100, 10))
+                .isInstanceOf(YoutubeApiRequestException.class)
+                .hasMessageContaining("Failed to fetch video details");
+    }
+
+    @Test
+    void updateExistingItems_ShouldThrowRequestException_WhenHttpException400WithDifferentMessage() throws Exception {
+        Item item = new Item();
+        item.setVideoId("v1");
+        when(httpClient.get(any(), any(), any()))
+                .thenThrow(new HttpException("GET", 400, "Bad Request: Invalid format"));
 
         assertThatThrownBy(() -> service.updateExistingItems(httpClient, "key", List.of(item), 0, 100, 10))
                 .isInstanceOf(YoutubeApiRequestException.class)
@@ -742,6 +806,195 @@ class VideoFetchServiceImplTest {
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getThumbnailUrl()).isNull();
+    }
+
+    @Test
+    void syncStatisticsForItems_ShouldReturnZero_WhenListEmpty() throws Exception {
+        int count = service.syncStatisticsForItems(httpClient, "key", Collections.emptyList(), 0, 100, 10);
+        assertThat(count).isEqualTo(0);
+        verify(httpClient, never()).get(any(), any(), any());
+    }
+
+    @Test
+    void syncStatisticsForItems_ShouldUpdate_WhenValidResponse() throws Exception {
+        Item item = new Item();
+        item.setVideoId("v1");
+
+        String responseBody = """
+            {
+                "items": [
+                    {
+                        "id": "v1",
+                        "statistics": {
+                            "viewCount": "100",
+                            "likeCount": "10",
+                            "commentCount": "5"
+                        }
+                    }
+                ]
+            }
+            """;
+        when(httpClient.get(eq("/youtube/v3/videos"), anyMap(), any())).thenReturn(new HttpClient.Response(200, responseBody));
+        when(itemRepository.findAllByVideoIdIn(any())).thenReturn(List.of(item));
+
+        int count = service.syncStatisticsForItems(httpClient, "key", List.of(item), 0, 100, 10);
+
+        assertThat(count).isEqualTo(1);
+        assertThat(item.getStatistics()).hasSize(1);
+        var stat = item.getStatistics().iterator().next();
+        assertThat(stat.getViewCount()).isEqualTo(100L);
+        assertThat(stat.getLikeCount()).isEqualTo(10L);
+        assertThat(stat.getCommentCount()).isEqualTo(5L);
+        verify(itemRepository).save(item);
+    }
+
+    @Test
+    void syncStatisticsForItems_ShouldReturnZero_WhenItemsIsNotArray() throws Exception {
+        Item item = new Item();
+        item.setVideoId("v1");
+
+        String responseBody = "{\"items\": \"not-an-array\"}";
+        when(httpClient.get(eq("/youtube/v3/videos"), anyMap(), any())).thenReturn(new HttpClient.Response(200, responseBody));
+
+        int count = service.syncStatisticsForItems(httpClient, "key", List.of(item), 0, 100, 10);
+
+        assertThat(count).isEqualTo(0);
+    }
+
+    @Test
+    void syncStatisticsForItems_ShouldNotUpdate_WhenStatisticsMissing() throws Exception {
+        Item item = new Item();
+        item.setVideoId("v1");
+
+        // 測試有找到影片，但沒有 statistics 節點的分支
+        String responseBody = """
+            {
+                "items": [
+                    {
+                        "id": "v1"
+                    }
+                ]
+            }
+            """;
+        when(httpClient.get(eq("/youtube/v3/videos"), anyMap(), any())).thenReturn(new HttpClient.Response(200, responseBody));
+        when(itemRepository.findAllByVideoIdIn(any())).thenReturn(List.of(item));
+
+        int count = service.syncStatisticsForItems(httpClient, "key", List.of(item), 0, 100, 10);
+
+        assertThat(count).isEqualTo(0);
+        verify(itemRepository, never()).save(item);
+    }
+
+    @Test
+    void syncStatisticsForItems_ShouldReturnZero_WhenApiResponseHasNoItems() throws Exception {
+        Item item = new Item();
+        item.setVideoId("v1");
+
+        // 測試完全沒有 items 節點的 isMissingNode() 分支
+        String responseBody = "{}";
+        when(httpClient.get(eq("/youtube/v3/videos"), anyMap(), any())).thenReturn(new HttpClient.Response(200, responseBody));
+
+        int count = service.syncStatisticsForItems(httpClient, "key", List.of(item), 0, 100, 10);
+
+        assertThat(count).isEqualTo(0);
+    }
+
+    @Test
+    void syncStatisticsForItems_ShouldSkipItem_WhenIdNotInList() throws Exception {
+        Item item = new Item();
+        item.setVideoId("v1");
+
+        String responseBody = """
+            {
+                "items": [
+                    {
+                        "id": "v2",
+                        "statistics": {
+                            "viewCount": "100"
+                        }
+                    }
+                ]
+            }
+            """;
+        when(httpClient.get(eq("/youtube/v3/videos"), anyMap(), any())).thenReturn(new HttpClient.Response(200, responseBody));
+        when(itemRepository.findAllByVideoIdIn(any())).thenReturn(List.of(item));
+
+        int count = service.syncStatisticsForItems(httpClient, "key", List.of(item), 0, 100, 10);
+
+        assertThat(count).isEqualTo(0);
+    }
+
+    @Test
+    void syncStatisticsForItems_ShouldThrowAuthException_WhenApiKeyInvalid() throws Exception {
+        Item item = new Item();
+        item.setVideoId("v1");
+        when(httpClient.get(any(), any(), any()))
+                .thenThrow(new HttpException("GET", 400, "API key not valid"));
+
+        assertThatThrownBy(() -> service.syncStatisticsForItems(httpClient, "key", List.of(item), 0, 100, 10))
+                .isInstanceOf(YoutubeApiAuthException.class);
+    }
+
+    @Test
+    void syncStatisticsForItems_ShouldThrowRequestException_WhenIoException() throws Exception {
+        Item item = new Item();
+        item.setVideoId("v1");
+        when(httpClient.get(any(), any(), any()))
+                .thenThrow(new IOException("Network error"));
+
+        assertThatThrownBy(() -> service.syncStatisticsForItems(httpClient, "key", List.of(item), 0, 100, 10))
+                .isInstanceOf(YoutubeApiRequestException.class);
+    }
+
+    @Test
+    void syncStatisticsForItems_ShouldThrowRequestException_WhenHttpException400ButNotAuth() throws Exception {
+        Item item = new Item();
+        item.setVideoId("v1");
+        HttpException mockException = org.mockito.Mockito.mock(HttpException.class);
+        when(mockException.getStatusCode()).thenReturn(400);
+        when(mockException.getMessage()).thenReturn(null);
+
+        when(httpClient.get(any(), any(), any()))
+                .thenThrow(mockException);
+
+        assertThatThrownBy(() -> service.syncStatisticsForItems(httpClient, "key", List.of(item), 0, 100, 10))
+                .isInstanceOf(YoutubeApiRequestException.class)
+                .hasMessageContaining("Failed to fetch statistics");
+    }
+
+    @Test
+    void syncStatisticsForItems_ShouldThrowRequestException_WhenHttpException400WithDifferentMessage() throws Exception {
+        Item item = new Item();
+        item.setVideoId("v1");
+        when(httpClient.get(any(), any(), any()))
+                .thenThrow(new HttpException("GET", 400, "Bad Request: Missing parameter"));
+
+        assertThatThrownBy(() -> service.syncStatisticsForItems(httpClient, "key", List.of(item), 0, 100, 10))
+                .isInstanceOf(YoutubeApiRequestException.class)
+                .hasMessageContaining("Failed to fetch statistics");
+    }
+
+    @Test
+    void syncStatisticsForItems_ShouldThrowRequestException_WhenHttpException500() throws Exception {
+        Item item = new Item();
+        item.setVideoId("v1");
+        when(httpClient.get(any(), any(), any()))
+                .thenThrow(new HttpException("GET", 500, "Server Error"));
+
+        assertThatThrownBy(() -> service.syncStatisticsForItems(httpClient, "key", List.of(item), 0, 100, 10))
+                .isInstanceOf(YoutubeApiRequestException.class)
+                .hasMessageContaining("Failed to fetch statistics");
+    }
+
+    @Test
+    void syncStatisticsForItems_ShouldThrowRequestException_WhenURISyntaxException() throws Exception {
+        Item item = new Item();
+        item.setVideoId("v1");
+        when(httpClient.get(any(), any(), any()))
+                .thenThrow(new URISyntaxException("input", "reason"));
+
+        assertThatThrownBy(() -> service.syncStatisticsForItems(httpClient, "key", List.of(item), 0, 100, 10))
+                .isInstanceOf(YoutubeApiRequestException.class);
     }
 
     @Test
