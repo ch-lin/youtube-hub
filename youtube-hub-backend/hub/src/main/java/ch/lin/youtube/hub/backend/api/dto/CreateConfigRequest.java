@@ -121,4 +121,14 @@ public class CreateConfigRequest {
      */
     private Long quotaSafetyThreshold;
 
+    /**
+     * The delay in milliseconds before making a YouTube API request.
+     */
+    private Long apiCallDelay;
+
+    /**
+     * The number of days a video is considered active for statistics
+     * synchronization.
+     */
+    private Integer activeVideosSyncDays;
 }

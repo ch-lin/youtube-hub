@@ -149,6 +149,8 @@ public class ConfigsServiceImpl implements ConfigsService {
         newConfig.setQuota(command.getQuota());
         validateQuotaThreshold(command.getQuotaSafetyThreshold());
         newConfig.setQuotaSafetyThreshold(command.getQuotaSafetyThreshold());
+        newConfig.setApiCallDelay(command.getApiCallDelay());
+        newConfig.setActiveVideosSyncDays(command.getActiveVideosSyncDays());
 
         return hubConfigRepository.save(newConfig);
     }
@@ -254,6 +256,8 @@ public class ConfigsServiceImpl implements ConfigsService {
         command.getQuota().ifPresent(config::setQuota);
         command.getQuotaSafetyThreshold().ifPresent(this::validateQuotaThreshold);
         command.getQuotaSafetyThreshold().ifPresent(config::setQuotaSafetyThreshold);
+        command.getApiCallDelay().ifPresent(config::setApiCallDelay);
+        command.getActiveVideosSyncDays().ifPresent(config::setActiveVideosSyncDays);
 
         HubConfig savedConfig = hubConfigRepository.save(config);
 
@@ -334,6 +338,12 @@ public class ConfigsServiceImpl implements ConfigsService {
             }
             if (dbConfig.getQuotaSafetyThreshold() == null) {
                 dbConfig.setQuotaSafetyThreshold(defaultConfig.getQuotaSafetyThreshold());
+            }
+            if (dbConfig.getApiCallDelay() == null) {
+                dbConfig.setApiCallDelay(defaultConfig.getApiCallDelay());
+            }
+            if (dbConfig.getActiveVideosSyncDays() == null) {
+                dbConfig.setActiveVideosSyncDays(defaultConfig.getActiveVideosSyncDays());
             }
             return dbConfig;
         }).orElseGet(this::findOrCreateDefaultConfig);

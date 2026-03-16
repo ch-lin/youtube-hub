@@ -97,4 +97,15 @@ public class CreateConfigCommand {
      * The safety threshold for the quota.
      */
     Long quotaSafetyThreshold;
+
+    /**
+     * The delay in milliseconds before making a YouTube API request.
+     */
+    Long apiCallDelay;
+
+    /**
+     * The number of days a video is considered active for statistics
+     * synchronization.
+     */
+    Integer activeVideosSyncDays;
 }

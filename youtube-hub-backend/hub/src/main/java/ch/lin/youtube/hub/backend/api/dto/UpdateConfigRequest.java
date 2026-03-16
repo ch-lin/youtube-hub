@@ -109,4 +109,15 @@ public class UpdateConfigRequest {
      * Updates the safety threshold for the quota.
      */
     private Long quotaSafetyThreshold;
+
+    /**
+     * Updates the API call delay in milliseconds.
+     */
+    private Long apiCallDelay;
+
+    /**
+     * Updates the number of days a video is considered active for statistics
+     * synchronization.
+     */
+    private Integer activeVideosSyncDays;
 }

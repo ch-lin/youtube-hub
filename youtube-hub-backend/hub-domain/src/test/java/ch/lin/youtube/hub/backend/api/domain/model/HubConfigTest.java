@@ -38,6 +38,8 @@ class HubConfigTest {
         assertThat(config.getFixedRate()).isEqualTo(86400000L); // Default 24 hours
         assertThat(config.getQuota()).isEqualTo(10000L);
         assertThat(config.getQuotaSafetyThreshold()).isEqualTo(500L);
+        assertThat(config.getApiCallDelay()).isEqualTo(100L);
+        assertThat(config.getActiveVideosSyncDays()).isEqualTo(30);
     }
 
     @Test
@@ -54,7 +56,9 @@ class HubConfigTest {
                 "0 0 * * * *",
                 "UTC",
                 50000L,
-                1000L
+                1000L,
+                200L,
+                45
         );
 
         assertThat(config.getName()).isEqualTo("test-config");
@@ -69,6 +73,8 @@ class HubConfigTest {
         assertThat(config.getCronTimeZone()).isEqualTo("UTC");
         assertThat(config.getQuota()).isEqualTo(50000L);
         assertThat(config.getQuotaSafetyThreshold()).isEqualTo(1000L);
+        assertThat(config.getApiCallDelay()).isEqualTo(200L);
+        assertThat(config.getActiveVideosSyncDays()).isEqualTo(45);
     }
 
     @Test
@@ -82,6 +88,8 @@ class HubConfigTest {
         config.setCronTimeZone("Asia/Taipei");
         config.setQuota(20000L);
         config.setQuotaSafetyThreshold(200L);
+        config.setApiCallDelay(150L);
+        config.setActiveVideosSyncDays(15);
 
         assertThat(config.getName()).isEqualTo("new-name");
         assertThat(config.getAutoStartFetchScheduler()).isTrue();
@@ -91,13 +99,15 @@ class HubConfigTest {
         assertThat(config.getCronTimeZone()).isEqualTo("Asia/Taipei");
         assertThat(config.getQuota()).isEqualTo(20000L);
         assertThat(config.getQuotaSafetyThreshold()).isEqualTo(200L);
+        assertThat(config.getApiCallDelay()).isEqualTo(150L);
+        assertThat(config.getActiveVideosSyncDays()).isEqualTo(15);
     }
 
     @Test
     void testEqualsAndHashCode_ShouldIncludeNewFields() {
-        HubConfig config1 = new HubConfig("cfg", true, "k", "i", "s", true, SchedulerType.CRON, 100L, "cron", "UTC", 10000L, 500L);
-        HubConfig config2 = new HubConfig("cfg", true, "k", "i", "s", true, SchedulerType.CRON, 100L, "cron", "UTC", 10000L, 500L);
-        HubConfig config3 = new HubConfig("cfg", true, "k", "i", "s", false, SchedulerType.CRON, 100L, "cron", "UTC", 10000L, 500L); // Different autoStart
+        HubConfig config1 = new HubConfig("cfg", true, "k", "i", "s", true, SchedulerType.CRON, 100L, "cron", "UTC", 10000L, 500L, 100L, 30);
+        HubConfig config2 = new HubConfig("cfg", true, "k", "i", "s", true, SchedulerType.CRON, 100L, "cron", "UTC", 10000L, 500L, 100L, 30);
+        HubConfig config3 = new HubConfig("cfg", true, "k", "i", "s", false, SchedulerType.CRON, 100L, "cron", "UTC", 10000L, 500L, 100L, 30); // Different autoStart
 
         assertThat(config1).isEqualTo(config2);
         assertThat(config1.hashCode()).isEqualTo(config2.hashCode());

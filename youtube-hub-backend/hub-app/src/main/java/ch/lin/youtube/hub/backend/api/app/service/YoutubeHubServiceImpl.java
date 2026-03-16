@@ -172,8 +172,8 @@ public class YoutubeHubServiceImpl implements YoutubeHubService {
         }
 
         if (delayInMilliseconds == null || delayInMilliseconds < 0) {
-            logger.warn("Invalid delay value provided. Defaulting to 100 milliseconds.");
-            delayInMilliseconds = 100L;
+            logger.warn("Invalid delay value provided. Defaulting to configured API call delay.");
+            delayInMilliseconds = Optional.ofNullable(resolvedConfig.getApiCallDelay()).orElse(100L);
         }
 
         long quotaLimit = resolvedConfig.getQuota();
@@ -501,8 +501,11 @@ public class YoutubeHubServiceImpl implements YoutubeHubService {
         String channelLog = (channelIds != null && !channelIds.isEmpty()) ? " for specific channels" : "";
         logger.info("Starting background job to sync statistics for active videos{}...", channelLog);
 
+        HubConfig config = configsService.getResolvedConfig(null);
+        int syncDays = Optional.ofNullable(config.getActiveVideosSyncDays()).orElse(30);
+
         // 1. Identify target: fetch videos published in the last 30 days
-        OffsetDateTime threshold = OffsetDateTime.now().minusDays(30);
+        OffsetDateTime threshold = OffsetDateTime.now().minusDays(syncDays);
         List<Item> activeItems;
         if (channelIds != null && !channelIds.isEmpty()) {
             activeItems = itemRepository.findAllByVideoPublishedAtAfterAndPlaylistChannelChannelIdIn(threshold, channelIds);
@@ -518,11 +521,10 @@ public class YoutubeHubServiceImpl implements YoutubeHubService {
         logger.info("Found {} active videos to sync. Preparing batch process...", activeItems.size());
 
         // 2. Prepare configurations and API Client
-        HubConfig config = configsService.getResolvedConfig(null);
         String apiKey = config.getYoutubeApiKey();
         long quotaLimit = config.getQuota();
         long quotaThreshold = config.getQuotaSafetyThreshold();
-        long delay = 100L; // Safety delay between batches
+        long delay = Optional.ofNullable(config.getApiCallDelay()).orElse(100L); // Safety delay between batches
 
         int totalUpdated = 0;
         int batchSize = 50; // YouTube API limits up to 50 IDs per request
