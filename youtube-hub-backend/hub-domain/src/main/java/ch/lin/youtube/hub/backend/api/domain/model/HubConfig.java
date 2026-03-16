@@ -50,7 +50,7 @@ import lombok.Setter;
 @AllArgsConstructor
 @EqualsAndHashCode(of = {"name", "enabled", "youtubeApiKey", "clientId", "clientSecret",
     "autoStartFetchScheduler", "schedulerType", "fixedRate", "cronExpression",
-    "cronTimeZone", "quota", "quotaSafetyThreshold"}, callSuper = false)
+    "cronTimeZone", "quota", "quotaSafetyThreshold", "apiCallDelay", "activeVideosSyncDays"}, callSuper = false)
 public class HubConfig {
 
     /**
@@ -117,6 +117,16 @@ public class HubConfig {
      * The name of the quota safety threshold column in the database.
      */
     public static final String QUOTA_SAFETY_THRESHOLD_COLUMN = "quota_safety_threshold";
+
+    /**
+     * The name of the API call delay column in the database.
+     */
+    public static final String API_CALL_DELAY_COLUMN = "api_call_delay";
+
+    /**
+     * The name of the active videos sync days column in the database.
+     */
+    public static final String ACTIVE_VIDEOS_SYNC_DAYS_COLUMN = "active_videos_sync_days";
 
     /**
      * The primary key and unique name for this configuration profile (e.g.,
@@ -196,4 +206,18 @@ public class HubConfig {
      */
     @Column(name = HubConfig.QUOTA_SAFETY_THRESHOLD_COLUMN)
     private Long quotaSafetyThreshold = 500L;
+
+    /**
+     * The delay in milliseconds before making a YouTube API request. Defaults
+     * to 100.
+     */
+    @Column(name = HubConfig.API_CALL_DELAY_COLUMN)
+    private Long apiCallDelay = 100L;
+
+    /**
+     * The number of days a video is considered active for statistics
+     * synchronization. Defaults to 30.
+     */
+    @Column(name = HubConfig.ACTIVE_VIDEOS_SYNC_DAYS_COLUMN)
+    private Integer activeVideosSyncDays = 30;
 }

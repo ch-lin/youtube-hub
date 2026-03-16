@@ -59,6 +59,8 @@ public class DefaultConfigFactory {
                 properties.getCronExpression(),
                 properties.getCronTimeZone(),
                 properties.getQuota(),
-                properties.getQuotaSafetyThreshold());
+                properties.getQuotaSafetyThreshold(),
+                properties.getApiCallDelay(),
+                properties.getActiveVideosSyncDays());
     }
 }

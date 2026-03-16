@@ -225,6 +225,8 @@ class ConfigsServiceImplTest {
                 null,
                 null,
                 null,
+                null,
+                null,
                 null
         );
 
@@ -256,6 +258,8 @@ class ConfigsServiceImplTest {
         when(command.getFixedRate()).thenReturn(Optional.empty());
         when(command.getQuota()).thenReturn(Optional.empty());
         when(command.getQuotaSafetyThreshold()).thenReturn(Optional.empty());
+        when(command.getApiCallDelay()).thenReturn(Optional.empty());
+        when(command.getActiveVideosSyncDays()).thenReturn(Optional.empty());
 
         HubConfig existing = new HubConfig();
         existing.setName("existing");
@@ -430,6 +434,8 @@ class ConfigsServiceImplTest {
         when(command.getCronTimeZone()).thenReturn(Optional.empty());
         when(command.getQuota()).thenReturn(Optional.of(20000L));
         when(command.getQuotaSafetyThreshold()).thenReturn(Optional.of(1000L));
+        when(command.getApiCallDelay()).thenReturn(Optional.empty());
+        when(command.getActiveVideosSyncDays()).thenReturn(Optional.empty());
 
         HubConfig existingConfig = new HubConfig();
         existingConfig.setName(configName);
@@ -484,6 +490,8 @@ class ConfigsServiceImplTest {
         dbConfig.setCronTimeZone("");
         dbConfig.setQuota(null);
         dbConfig.setQuotaSafetyThreshold(null);
+        dbConfig.setApiCallDelay(null);
+        dbConfig.setActiveVideosSyncDays(null);
         // enabled is null, apiKey is null
 
         HubConfig defaultConfig = new HubConfig();
@@ -497,6 +505,8 @@ class ConfigsServiceImplTest {
         defaultConfig.setCronTimeZone("UTC");
         defaultConfig.setQuota(10000L);
         defaultConfig.setQuotaSafetyThreshold(500L);
+        defaultConfig.setApiCallDelay(200L);
+        defaultConfig.setActiveVideosSyncDays(45);
 
         when(hubConfigRepository.findByName("custom")).thenReturn(Optional.of(dbConfig));
         when(defaultConfigFactory.create(defaultProperties)).thenReturn(defaultConfig);
@@ -513,6 +523,8 @@ class ConfigsServiceImplTest {
         assertThat(result.getCronTimeZone()).isEqualTo("UTC");
         assertThat(result.getQuota()).isEqualTo(10000L);
         assertThat(result.getQuotaSafetyThreshold()).isEqualTo(500L);
+        assertThat(result.getApiCallDelay()).isEqualTo(200L);
+        assertThat(result.getActiveVideosSyncDays()).isEqualTo(45);
     }
 
     @Test
@@ -573,6 +585,8 @@ class ConfigsServiceImplTest {
         when(command.getCronTimeZone()).thenReturn(Optional.empty());
         when(command.getQuota()).thenReturn(Optional.empty());
         when(command.getQuotaSafetyThreshold()).thenReturn(Optional.empty());
+        when(command.getApiCallDelay()).thenReturn(Optional.empty());
+        when(command.getActiveVideosSyncDays()).thenReturn(Optional.empty());
 
         when(hubConfigRepository.findByName(configName)).thenReturn(Optional.empty());
         when(hubConfigRepository.save(any())).thenAnswer(i -> i.getArgument(0));
@@ -606,6 +620,8 @@ class ConfigsServiceImplTest {
         when(command.getCronTimeZone()).thenReturn(Optional.empty());
         when(command.getQuota()).thenReturn(Optional.empty());
         when(command.getQuotaSafetyThreshold()).thenReturn(Optional.empty());
+        when(command.getApiCallDelay()).thenReturn(Optional.empty());
+        when(command.getActiveVideosSyncDays()).thenReturn(Optional.empty());
 
         HubConfig otherConfig = new HubConfig();
         otherConfig.setName("other");
@@ -640,6 +656,8 @@ class ConfigsServiceImplTest {
         when(command.getCronTimeZone()).thenReturn(Optional.empty());
         when(command.getQuota()).thenReturn(Optional.empty());
         when(command.getQuotaSafetyThreshold()).thenReturn(Optional.empty());
+        when(command.getApiCallDelay()).thenReturn(Optional.empty());
+        when(command.getActiveVideosSyncDays()).thenReturn(Optional.empty());
 
         HubConfig currentConfig = new HubConfig();
         currentConfig.setName(configName);
@@ -687,6 +705,8 @@ class ConfigsServiceImplTest {
         dbConfig.setCronTimeZone("existing-zone");
         dbConfig.setQuota(5000L);
         dbConfig.setQuotaSafetyThreshold(200L);
+        dbConfig.setApiCallDelay(150L);
+        dbConfig.setActiveVideosSyncDays(15);
 
         when(hubConfigRepository.findByName("custom")).thenReturn(Optional.of(dbConfig));
 
@@ -699,6 +719,8 @@ class ConfigsServiceImplTest {
         defaultConfig.setCronTimeZone("default-zone");
         defaultConfig.setQuota(10000L);
         defaultConfig.setQuotaSafetyThreshold(500L);
+        defaultConfig.setApiCallDelay(100L);
+        defaultConfig.setActiveVideosSyncDays(30);
         when(defaultConfigFactory.create(defaultProperties)).thenReturn(defaultConfig);
 
         HubConfig result = configsService.getResolvedConfig("custom");
@@ -711,6 +733,8 @@ class ConfigsServiceImplTest {
         assertThat(result.getCronTimeZone()).isEqualTo("existing-zone");
         assertThat(result.getQuota()).isEqualTo(5000L);
         assertThat(result.getQuotaSafetyThreshold()).isEqualTo(200L);
+        assertThat(result.getApiCallDelay()).isEqualTo(150L);
+        assertThat(result.getActiveVideosSyncDays()).isEqualTo(15);
     }
 
     @SuppressWarnings("null")

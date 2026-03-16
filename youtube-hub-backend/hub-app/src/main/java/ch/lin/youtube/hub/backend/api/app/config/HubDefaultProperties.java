@@ -110,4 +110,16 @@ public class HubDefaultProperties {
      * The safety threshold for the quota. Defaults to 500.
      */
     private Long quotaSafetyThreshold = 500L;
+
+    /**
+     * The delay in milliseconds before making a YouTube API request. Defaults
+     * to 100.
+     */
+    private Long apiCallDelay = 100L;
+
+    /**
+     * The number of days a video is considered active for statistics
+     * synchronization. Defaults to 30.
+     */
+    private Integer activeVideosSyncDays = 30;
 }

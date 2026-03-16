@@ -198,7 +198,7 @@ public class AutoFetchSchedulerServiceImpl implements AutoFetchSchedulerService 
             youtubeHubService.processJob(
                     config.getYoutubeApiKey(),
                     config.getName(),
-                    100L, // Default delay
+                    config.getApiCallDelay(), // Configured delay
                     null, // publishedAfter (null means incremental update based on last processed time)
                     false, // forcePublishedAfter
                     null // channelIds (null means all channels)

@@ -103,4 +103,15 @@ public class UpdateConfigCommand {
      * An optional new safety threshold for the quota.
      */
     Optional<Long> quotaSafetyThreshold;
+
+    /**
+     * An optional new API call delay in milliseconds.
+     */
+    Optional<Long> apiCallDelay;
+
+    /**
+     * An optional new number of days a video is considered active for
+     * statistics synchronization.
+     */
+    Optional<Integer> activeVideosSyncDays;
 }

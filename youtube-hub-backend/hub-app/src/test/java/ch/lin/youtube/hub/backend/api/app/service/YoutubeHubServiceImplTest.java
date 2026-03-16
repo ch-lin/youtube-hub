@@ -1065,13 +1065,13 @@ class YoutubeHubServiceImplTest {
 
     @Test
     void syncActiveVideosStatistics_ShouldReturnZero_WhenNoActiveItemsFound() {
+        when(configsService.getResolvedConfig(null)).thenReturn(new HubConfig());
         when(itemRepository.findAllByVideoPublishedAtAfter(any(OffsetDateTime.class)))
                 .thenReturn(Collections.emptyList());
 
         Map<String, Object> result = service.syncActiveVideosStatistics(null);
 
         assertThat(result.get("syncedItems")).isEqualTo(0);
-        verify(configsService, never()).getResolvedConfig(any());
     }
 
     @Test

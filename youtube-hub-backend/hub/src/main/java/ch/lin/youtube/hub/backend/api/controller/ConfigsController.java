@@ -129,7 +129,9 @@ public class ConfigsController {
                 request.getCronExpression(),
                 request.getCronTimeZone(),
                 request.getQuota(),
-                request.getQuotaSafetyThreshold());
+                request.getQuotaSafetyThreshold(),
+                request.getApiCallDelay(),
+                request.getActiveVideosSyncDays());
 
         HubConfig createdConfig = configsService.createConfig(command);
 
@@ -226,6 +228,8 @@ public class ConfigsController {
                 .cronTimeZone(Optional.ofNullable(request.getCronTimeZone()))
                 .quota(Optional.ofNullable(request.getQuota()))
                 .quotaSafetyThreshold(Optional.ofNullable(request.getQuotaSafetyThreshold()))
+                .apiCallDelay(Optional.ofNullable(request.getApiCallDelay()))
+                .activeVideosSyncDays(Optional.ofNullable(request.getActiveVideosSyncDays()))
                 .build();
 
         HubConfig savedConfig = configsService.saveConfig(command);
