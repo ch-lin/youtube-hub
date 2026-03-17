@@ -89,6 +89,11 @@ services:
       - YOUTUBE_HUB_DOWNLOADER_URL=${PUBLIC_DOWNLOADER_URL:-http://downloader-backend:8080}
       # Override the JWT issuer URI to use the authentication service's Docker service name
       - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=${AUTH_SERVICE_API_URL:-http://authentication-backend:8080}
+      # Default configuration for the YouTube Hub API.
+      # These values override the defaults in `application.properties` and are used to create the initial 'default' config.
+      - YOUTUBE_HUB_DEFAULT_CONFIG_YOUTUBE_API_KEY=${YOUTUBE_HUB_DEFAULT_CONFIG_YOUTUBE_API_KEY}
+      - YOUTUBE_HUB_DEFAULT_CONFIG_CLIENT_ID=${YOUTUBE_HUB_DEFAULT_CONFIG_CLIENT_ID}
+      - YOUTUBE_HUB_DEFAULT_CONFIG_CLIENT_SECRET=${YOUTUBE_HUB_DEFAULT_CONFIG_CLIENT_SECRET}
       # Explicitly disable Spring Boot's "Debug Mode" (auto-config report) so it doesn't conflict with Next.js DEBUG var.
       - DEBUG=false
     # Set memory limits for standard 'docker-compose up'
