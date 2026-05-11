@@ -240,6 +240,7 @@ class VideoFetchServiceImplTest {
         item.setTitle("Old Title");
         item.setDescription("Old Desc");
         item.setLiveBroadcastContent(LiveBroadcastContent.NONE);
+        item.setVideoPublishedAt(OffsetDateTime.parse("2023-01-01T10:00:00Z"));
 
         String responseBody = """
             {
@@ -249,6 +250,7 @@ class VideoFetchServiceImplTest {
                         "snippet": {
                             "title": "New Title",
                             "description": "New Desc",
+                            "publishedAt": "2023-01-01T12:00:00Z",
                             "liveBroadcastContent": "live"
                         }
                     }
@@ -263,6 +265,7 @@ class VideoFetchServiceImplTest {
         assertThat(item.getTitle()).isEqualTo("New Title");
         assertThat(item.getDescription()).isEqualTo("New Desc");
         assertThat(item.getLiveBroadcastContent()).isEqualTo(LiveBroadcastContent.LIVE);
+        assertThat(item.getVideoPublishedAt()).isEqualTo(OffsetDateTime.parse("2023-01-01T12:00:00Z"));
         verify(itemRepository).save(item);
     }
 
@@ -306,7 +309,39 @@ class VideoFetchServiceImplTest {
         item.setVideoId("v1");
         item.setTitle("Title");
         item.setLiveBroadcastContent(LiveBroadcastContent.NONE);
+        item.setVideoPublishedAt(OffsetDateTime.parse("2023-01-01T12:00:00Z"));
 
+        String responseBody = """
+            {
+                "items": [
+                    {
+                        "id": "v1",
+                        "snippet": {
+                            "title": "Title",
+                            "publishedAt": "2023-01-01T12:00:00Z",
+                            "liveBroadcastContent": "none"
+                        }
+                    }
+                ]
+            }
+            """;
+        when(httpClient.get(eq("/youtube/v3/videos"), anyMap(), any())).thenReturn(new HttpClient.Response(200, responseBody));
+
+        int count = service.updateExistingItems(httpClient, "key", List.of(item), 0, 100, 10);
+
+        assertThat(count).isEqualTo(0);
+        verify(itemRepository, never()).save(item);
+    }
+
+    @Test
+    void updateExistingItems_ShouldHandleMissingPublishedAt() throws Exception {
+        Item item = new Item();
+        item.setVideoId("v1");
+        item.setTitle("Title");
+        item.setLiveBroadcastContent(LiveBroadcastContent.NONE);
+        item.setVideoPublishedAt(OffsetDateTime.parse("2023-01-01T10:00:00Z"));
+
+        // The API response omits the publishedAt field
         String responseBody = """
             {
                 "items": [
@@ -325,6 +360,7 @@ class VideoFetchServiceImplTest {
         int count = service.updateExistingItems(httpClient, "key", List.of(item), 0, 100, 10);
 
         assertThat(count).isEqualTo(0);
+        assertThat(item.getVideoPublishedAt()).isEqualTo(OffsetDateTime.parse("2023-01-01T10:00:00Z"));
         verify(itemRepository, never()).save(item);
     }
 
@@ -335,7 +371,7 @@ class VideoFetchServiceImplTest {
         item.setTitle("Title");
         item.setLiveBroadcastContent(LiveBroadcastContent.NONE);
 
-        // 測試欄位都沒變，但有新的統計資料時，依然要標記為 updated = true
+        // Test that if no fields changed but there are new statistics, it should still be marked as updated = true
         String responseBody = """
             {
                 "items": [
@@ -866,7 +902,7 @@ class VideoFetchServiceImplTest {
         Item item = new Item();
         item.setVideoId("v1");
 
-        // 測試有找到影片，但沒有 statistics 節點的分支
+        // Test branch where video is found but statistics node is missing
         String responseBody = """
             {
                 "items": [
@@ -890,7 +926,7 @@ class VideoFetchServiceImplTest {
         Item item = new Item();
         item.setVideoId("v1");
 
-        // 測試完全沒有 items 節點的 isMissingNode() 分支
+        // Test the isMissingNode() branch where items node is completely missing
         String responseBody = "{}";
         when(httpClient.get(eq("/youtube/v3/videos"), anyMap(), any())).thenReturn(new HttpClient.Response(200, responseBody));
 
