@@ -200,6 +200,16 @@ public class VideoFetchServiceImpl implements VideoFetchService {
                     updated = true;
                 }
 
+                String publishedAtStr = videoSnippet.path("publishedAt").asText(null);
+                if (publishedAtStr != null) {
+                    OffsetDateTime newPublishedAt = OffsetDateTime.parse(publishedAtStr);
+                    if (!newPublishedAt.equals(existingItem.getVideoPublishedAt())) {
+                        logger.info("    -> Updating publishedAt for video {}: {} -> {}", videoId, existingItem.getVideoPublishedAt(), newPublishedAt);
+                        existingItem.setVideoPublishedAt(newPublishedAt);
+                        updated = true;
+                    }
+                }
+
                 String liveBroadcastContentStr = videoSnippet.path("liveBroadcastContent").asText("NONE").toUpperCase();
                 LiveBroadcastContent newLiveStatus = LiveBroadcastContent.valueOf(liveBroadcastContentStr);
                 if (existingItem.getLiveBroadcastContent() != newLiveStatus) {
