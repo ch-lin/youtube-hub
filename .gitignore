@@ -74,3 +74,8 @@ target/
 
 # virtual machine crash logs
 hs_err_pid*
+
+# =================================
+# Local Data & Media
+# =================================
+data/

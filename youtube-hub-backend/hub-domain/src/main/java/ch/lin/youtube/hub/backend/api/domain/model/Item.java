@@ -56,7 +56,8 @@ import lombok.Setter;
  */
 @Table(name = TABLE_NAME, indexes = {
     @Index(name = BaseEntity.ID_INDEX, columnList = BaseEntity.ID_COLUMN),
-    @Index(name = VIDEO_ID_COLUMN, columnList = VIDEO_ID_COLUMN)}, uniqueConstraints = {
+    @Index(name = VIDEO_ID_COLUMN, columnList = VIDEO_ID_COLUMN),
+    @Index(name = "idx_item_thumbnail_status", columnList = Item.THUMBNAIL_STATUS_COLUMN + ", " + Item.THUMBNAIL_ATTEMPTED_AT_COLUMN)}, uniqueConstraints = {
     @UniqueConstraint(columnNames = VIDEO_ID_COLUMN)})
 @Entity
 @Getter
@@ -110,6 +111,26 @@ public class Item extends BaseEntity {
      * The name of the thumbnail URL column in the database.
      */
     public static final String THUMBNAIL_URL_COLUMN = "thumbnail_url";
+
+    /**
+     * The name of the stored thumbnail path column in the database.
+     */
+    public static final String STORED_THUMBNAIL_PATH_COLUMN = "stored_thumbnail_path";
+
+    /**
+     * The name of the thumbnail status column in the database.
+     */
+    public static final String THUMBNAIL_STATUS_COLUMN = "thumbnail_status";
+
+    /**
+     * The name of the thumbnail retry count column in the database.
+     */
+    public static final String THUMBNAIL_RETRY_COUNT_COLUMN = "thumbnail_retry_count";
+
+    /**
+     * The name of the thumbnail attempted at column in the database.
+     */
+    public static final String THUMBNAIL_ATTEMPTED_AT_COLUMN = "thumbnail_attempted_at";
 
     /**
      * The name of the playlist column in the database, used for the foreign
@@ -195,6 +216,46 @@ public class Item extends BaseEntity {
      */
     @Column(name = Item.THUMBNAIL_URL_COLUMN)
     private String thumbnailUrl;
+
+    /**
+     * The generic path, object key, or identifier where the downloaded
+     * thumbnail is stored in the underlying storage system.
+     */
+    @Column(name = Item.STORED_THUMBNAIL_PATH_COLUMN)
+    private String storedThumbnailPath;
+
+    /**
+     * The download status of the thumbnail. Defaults to
+     * {@link ThumbnailStatus#PENDING}.
+     */
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(name = Item.THUMBNAIL_STATUS_COLUMN, nullable = false)
+    private ThumbnailStatus thumbnailStatus = ThumbnailStatus.PENDING;
+
+    /**
+     * The number of times the system has attempted to download the thumbnail.
+     */
+    @Column(name = Item.THUMBNAIL_RETRY_COUNT_COLUMN)
+    private Integer thumbnailRetryCount;
+
+    /**
+     * The timestamp of the last attempt to download the thumbnail.
+     */
+    @Column(name = Item.THUMBNAIL_ATTEMPTED_AT_COLUMN, columnDefinition = "TIMESTAMP")
+    private OffsetDateTime thumbnailAttemptedAt;
+
+    /**
+     * Custom getter to safely handle null values from legacy database rows.
+     *
+     * @return the retry count, or 0 if it has never been set.
+     */
+    public int getThumbnailRetryCount() {
+        if (thumbnailRetryCount == null) {
+            return 0;
+        }
+        return thumbnailRetryCount;
+    }
 
     /**
      * The processing status of the item, indicating its state in a workflow.

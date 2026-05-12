@@ -7,6 +7,7 @@
 ![Maven](https://img.shields.io/badge/Build-Maven-blue)
 ![Docker](https://img.shields.io/badge/Docker-Container-2496ED)
 ![License](https://img.shields.io/badge/License-MIT-green)
+![MinIO](https://img.shields.io/badge/Storage-MinIO%20%7C%20S3-C7202C)
 
 The **YouTube Hub Service** is the central nervous system ("The Brain") of the **YouTube Data Hub** platform.
 
@@ -22,6 +23,8 @@ It serves as the primary backend API for the **YouTube-Hub-UI**, manages the cor
 ### Design Philosophy
 *   **Source of Truth**: While the Downloader handles the files, the Hub handles the *metadata*. The Hub's database is the single source of truth for the system's state.
 *   **Resilience**: Designed to handle YouTube API quota limits and network interruptions gracefully.
+*   **Pluggable Storage**: Employs the Strategy Pattern to seamlessly switch between local file storage and S3-compatible object storage.
+*   **Zero-Landing Streaming**: Direct `InputStream` piping from the YouTube API to S3/MinIO, preventing JVM memory bloat and unnecessary local disk I/O.
 
 ## 🚀 Key Features
 
@@ -30,6 +33,7 @@ It serves as the primary backend API for the **YouTube-Hub-UI**, manages the cor
 *   **Download Orchestration**: Sends download requests to the Downloader and tracks progress.
 *   **Polling**: Configurable polling intervals to optimize API quota usage.
 *   **Search & Filter**: Provides APIs for the UI to search and filter the local video library.
+*   **Dynamic Storage**: Effortlessly switch thumbnail storage between local disk and AWS S3/MinIO via simple environment variables.
 
 ## 🛠️ Tech Stack
 
@@ -38,6 +42,7 @@ It serves as the primary backend API for the **YouTube-Hub-UI**, manages the cor
 *   **Database**: MySQL (Core Data)
 *   **External API**: YouTube Data API v3
 *   **Build Tool**: Maven
+*   **Storage SDK**: AWS SDK for Java v2 (S3)
 
 ## 📦 Prerequisites & Dependencies
 
@@ -78,6 +83,14 @@ RSA_PUBLIC_KEY_PATH=/path/to/public_key.pem
 # Security (Client Credentials for Outbound Calls)
 YOUTUBE_HUB_DEFAULT_CLIENT_ID=hub-service
 YOUTUBE_HUB_DEFAULT_CLIENT_SECRET=hub-client-secret
+
+# Storage Configuration (S3 / MinIO)
+YOUTUBE_HUB_STORAGE_TYPE=s3
+YOUTUBE_HUB_STORAGE_S3_ENDPOINT=http://localhost:9000
+YOUTUBE_HUB_STORAGE_S3_ACCESS_KEY=admin
+YOUTUBE_HUB_STORAGE_S3_SECRET_KEY=SuperSecretPassword123!
+YOUTUBE_HUB_STORAGE_S3_REGION=us-east-1
+YOUTUBE_HUB_STORAGE_S3_BUCKET_NAME=youtube-thumbnails
 ```
 
 > **Note**: The `Setup-Scripts/Init-secrets.sh` script can automatically inject the API Key and Client Credentials for you.

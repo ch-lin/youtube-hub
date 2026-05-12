@@ -40,6 +40,7 @@ class DefaultConfigFactoryTest {
         properties.setClientSecret("client-secret");
         properties.setQuota(50000L);
         properties.setQuotaSafetyThreshold(1000L);
+        properties.setMaxThumbnailRetries(5);
 
         DefaultConfigFactory factory = new DefaultConfigFactory();
         HubConfig config = factory.create(properties);
@@ -51,5 +52,6 @@ class DefaultConfigFactoryTest {
         assertThat(config.getClientSecret()).isEqualTo("client-secret");
         assertThat(config.getQuota()).isEqualTo(50000L);
         assertThat(config.getQuotaSafetyThreshold()).isEqualTo(1000L);
+        assertThat(config.getMaxThumbnailRetries()).isEqualTo(5);
     }
 }

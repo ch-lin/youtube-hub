@@ -122,4 +122,9 @@ public class HubDefaultProperties {
      * synchronization. Defaults to 30.
      */
     private Integer activeVideosSyncDays = 30;
+
+    /**
+     * The maximum number of retries for downloading thumbnails. Defaults to 3.
+     */
+    private Integer maxThumbnailRetries = 3;
 }

@@ -61,6 +61,7 @@ public class DefaultConfigFactory {
                 properties.getQuota(),
                 properties.getQuotaSafetyThreshold(),
                 properties.getApiCallDelay(),
-                properties.getActiveVideosSyncDays());
+                properties.getActiveVideosSyncDays(),
+                properties.getMaxThumbnailRetries());
     }
 }

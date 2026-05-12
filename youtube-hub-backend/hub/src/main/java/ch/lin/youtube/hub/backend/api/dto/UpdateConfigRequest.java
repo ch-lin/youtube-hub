@@ -24,6 +24,8 @@
 package ch.lin.youtube.hub.backend.api.dto;
 
 import ch.lin.youtube.hub.backend.api.domain.model.SchedulerType;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -120,4 +122,11 @@ public class UpdateConfigRequest {
      * synchronization.
      */
     private Integer activeVideosSyncDays;
+
+    /**
+     * Updates the maximum number of retries for downloading thumbnails.
+     */
+    @Min(0)
+    @Max(10)
+    private Integer maxThumbnailRetries;
 }

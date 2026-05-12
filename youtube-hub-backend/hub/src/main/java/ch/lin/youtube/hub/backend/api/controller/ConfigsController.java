@@ -131,7 +131,8 @@ public class ConfigsController {
                 request.getQuota(),
                 request.getQuotaSafetyThreshold(),
                 request.getApiCallDelay(),
-                request.getActiveVideosSyncDays());
+                request.getActiveVideosSyncDays(),
+                request.getMaxThumbnailRetries());
 
         HubConfig createdConfig = configsService.createConfig(command);
 
@@ -230,6 +231,7 @@ public class ConfigsController {
                 .quotaSafetyThreshold(Optional.ofNullable(request.getQuotaSafetyThreshold()))
                 .apiCallDelay(Optional.ofNullable(request.getApiCallDelay()))
                 .activeVideosSyncDays(Optional.ofNullable(request.getActiveVideosSyncDays()))
+                .maxThumbnailRetries(Optional.ofNullable(request.getMaxThumbnailRetries()))
                 .build();
 
         HubConfig savedConfig = configsService.saveConfig(command);

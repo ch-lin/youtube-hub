@@ -102,6 +102,7 @@ class ConfigsControllerTest {
         createRequest.setCronTimeZone("UTC");
         createRequest.setQuota(50000L);
         createRequest.setQuotaSafetyThreshold(1000L);
+        createRequest.setMaxThumbnailRetries(5);
 
         HubConfig created = new HubConfig();
         created.setName("new-config");
@@ -128,6 +129,7 @@ class ConfigsControllerTest {
         assertThat(captor.getValue().getCronTimeZone()).isEqualTo("UTC");
         assertThat(captor.getValue().getQuota()).isEqualTo(50000L);
         assertThat(captor.getValue().getQuotaSafetyThreshold()).isEqualTo(1000L);
+        assertThat(captor.getValue().getMaxThumbnailRetries()).isEqualTo(5);
     }
 
     @Test
@@ -164,6 +166,7 @@ class ConfigsControllerTest {
         updateRequest.setCronTimeZone("Asia/Taipei");
         updateRequest.setQuota(30000L);
         updateRequest.setQuotaSafetyThreshold(500L);
+        updateRequest.setMaxThumbnailRetries(8);
 
         HubConfig saved = new HubConfig();
         saved.setName("test");
@@ -191,6 +194,7 @@ class ConfigsControllerTest {
         assertThat(captor.getValue().getCronTimeZone()).isPresent().contains("Asia/Taipei");
         assertThat(captor.getValue().getQuota()).isPresent().contains(30000L);
         assertThat(captor.getValue().getQuotaSafetyThreshold()).isPresent().contains(500L);
+        assertThat(captor.getValue().getMaxThumbnailRetries()).isPresent().contains(8);
     }
 
     @Test

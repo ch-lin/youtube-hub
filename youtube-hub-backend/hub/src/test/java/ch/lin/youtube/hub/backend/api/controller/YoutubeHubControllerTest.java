@@ -33,6 +33,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -178,5 +179,79 @@ class YoutubeHubControllerTest {
         assertThat(body.getData()).isEqualTo(serviceResult);
 
         verify(youtubeHubService).syncActiveVideosStatistics(channelIds);
+    }
+
+    @Test
+    void getThumbnailsSyncStatus_ShouldReturnCorrectStatusAndCounts() {
+        when(youtubeHubService.isThumbnailSyncRunning()).thenReturn(true);
+        Map<String, Long> mockCounts = Map.of(
+                "totalCount", 100L,
+                "pendingCount", 10L,
+                "failedCount", 5L
+        );
+        when(youtubeHubService.getThumbnailCounts()).thenReturn(mockCounts);
+
+        ResponseEntity<ApiResponse<Map<String, Object>>> response = youtubeHubController.getThumbnailsSyncStatus();
+        ApiResponse<Map<String, Object>> body = response.getBody();
+        Objects.requireNonNull(body);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(body.getData().get("isRunning")).isEqualTo(true);
+        assertThat(body.getData().get("totalCount")).isEqualTo(100L);
+        assertThat(body.getData().get("pendingCount")).isEqualTo(10L);
+        assertThat(body.getData().get("failedCount")).isEqualTo(5L);
+    }
+
+    @Test
+    void triggerThumbnailsSync_ShouldReturnOk_WhenAlreadyRunning() {
+        when(youtubeHubService.isThumbnailSyncRunning()).thenReturn(true);
+
+        ResponseEntity<ApiResponse<String>> response = youtubeHubController.triggerThumbnailsSync();
+        ApiResponse<String> body = response.getBody();
+        Objects.requireNonNull(body);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(body.getData()).isEqualTo("Thumbnail sync is already running in the background.");
+        verify(youtubeHubService, never()).syncMissingThumbnailsBackground();
+    }
+
+    @Test
+    void triggerThumbnailsSync_ShouldReturnAcceptedAndStartJob_WhenNotRunning() {
+        when(youtubeHubService.isThumbnailSyncRunning()).thenReturn(false);
+
+        ResponseEntity<ApiResponse<String>> response = youtubeHubController.triggerThumbnailsSync();
+        ApiResponse<String> body = response.getBody();
+        Objects.requireNonNull(body);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+        assertThat(body.getData()).isEqualTo("Background thumbnail sync job started.");
+        verify(youtubeHubService).syncMissingThumbnailsBackground();
+    }
+
+    @Test
+    void resetUnavailableThumbnails_ShouldCallServiceWithNull_WhenRequestIsNull() {
+        when(youtubeHubService.resetUnavailableThumbnails(null)).thenReturn(10);
+
+        ResponseEntity<ApiResponse<Map<String, Integer>>> response = youtubeHubController.resetUnavailableThumbnails(null);
+        ApiResponse<Map<String, Integer>> body = response.getBody();
+        Objects.requireNonNull(body);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(body.getData().get("resetItems")).isEqualTo(10);
+        verify(youtubeHubService).resetUnavailableThumbnails(null);
+    }
+
+    @Test
+    void resetUnavailableThumbnails_ShouldCallServiceWithVideoIds_WhenRequestHasVideoIds() {
+        List<String> videoIds = List.of("vid1", "vid2");
+        when(youtubeHubService.resetUnavailableThumbnails(videoIds)).thenReturn(2);
+
+        ResponseEntity<ApiResponse<Map<String, Integer>>> response = youtubeHubController.resetUnavailableThumbnails(Map.of("videoIds", videoIds));
+        ApiResponse<Map<String, Integer>> body = response.getBody();
+        Objects.requireNonNull(body);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(body.getData().get("resetItems")).isEqualTo(2);
+        verify(youtubeHubService).resetUnavailableThumbnails(videoIds);
     }
 }

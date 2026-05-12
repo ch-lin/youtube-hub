@@ -33,8 +33,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.isNull;
 import org.mockito.Mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -47,6 +49,7 @@ import org.springframework.http.ResponseEntity;
 
 import ch.lin.platform.api.ApiResponse;
 import ch.lin.youtube.hub.backend.api.app.service.ItemService;
+import ch.lin.youtube.hub.backend.api.app.service.StorageService;
 import ch.lin.youtube.hub.backend.api.app.service.model.ItemUpdateResult;
 import ch.lin.youtube.hub.backend.api.domain.model.Item;
 import ch.lin.youtube.hub.backend.api.domain.model.ProcessingStatus;
@@ -59,12 +62,15 @@ class ItemControllerTest {
     @Mock
     private ItemService itemService;
 
+    @Mock
+    private StorageService storageService;
+
     private ItemController itemController;
 
     @BeforeEach
     @SuppressWarnings("unused")
     void setUp() {
-        itemController = new ItemController(itemService);
+        itemController = new ItemController(itemService, storageService);
     }
 
     @Test
@@ -72,6 +78,29 @@ class ItemControllerTest {
     void getAllItems_ShouldReturnItems() {
         Item item = new Item();
         item.setVideoId("vid1");
+        item.setStoredThumbnailPath("vid1.jpg");
+        Page<Item> page = new PageImpl<>(List.of(item));
+        Pageable pageable = PageRequest.of(0, 50);
+        when(itemService.getItems(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(page);
+        when(storageService.getFileAccessUrl("vid1.jpg")).thenReturn("http://localhost/vid1.jpg");
+
+        ResponseEntity<Page<ItemResponse>> response = itemController.getAllItems(null, null, null, null, null, null, null, pageable);
+        Page<ItemResponse> body = response.getBody();
+        Objects.requireNonNull(body);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(body.getContent()).hasSize(1);
+        assertThat(body.getContent().get(0).getVideoId()).isEqualTo("vid1");
+        verify(storageService).getFileAccessUrl("vid1.jpg");
+    }
+
+    @Test
+    @SuppressWarnings("null")
+    void getAllItems_ShouldHandleNullThumbnailPath() {
+        Item item = new Item();
+        item.setVideoId("vid2");
+        // storedThumbnailPath is intentionally null
         Page<Item> page = new PageImpl<>(List.of(item));
         Pageable pageable = PageRequest.of(0, 50);
         when(itemService.getItems(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class)))
@@ -83,7 +112,8 @@ class ItemControllerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(body.getContent()).hasSize(1);
-        assertThat(body.getContent().get(0).getVideoId()).isEqualTo("vid1");
+        assertThat(body.getContent().get(0).getVideoId()).isEqualTo("vid2");
+        verify(storageService, never()).getFileAccessUrl(anyString());
     }
 
     @Test
@@ -157,10 +187,12 @@ class ItemControllerTest {
         Item updatedItem = new Item();
         updatedItem.setVideoId(videoId);
         updatedItem.setStatus(ProcessingStatus.DOWNLOADED);
+        updatedItem.setStoredThumbnailPath("vid1.jpg");
 
         ItemUpdateResult result = new ItemUpdateResult(updatedItem, List.of("warning"));
         when(itemService.updateItemFileInfo(videoId, "task1", 1000L, "/path/to/file", ProcessingStatus.DOWNLOADED))
                 .thenReturn(result);
+        when(storageService.getFileAccessUrl("vid1.jpg")).thenReturn("http://localhost/vid1.jpg");
 
         ResponseEntity<ApiResponse<ItemResponse>> response = itemController.updateItemFileInfo(videoId, request);
         ApiResponse<ItemResponse> body = response.getBody();
@@ -169,5 +201,32 @@ class ItemControllerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(body.getData().getVideoId()).isEqualTo(videoId);
         assertThat(body.getWarnings()).contains("warning");
+        verify(storageService).getFileAccessUrl("vid1.jpg");
+    }
+
+    @Test
+    void updateItemFileInfo_ShouldHandleNullThumbnailPath() {
+        String videoId = "vid2";
+        UpdateItemRequest request = new UpdateItemRequest();
+        request.setDownloadTaskId("task2");
+        request.setFileSize(1000L);
+        request.setFilePath("/path/to/file");
+        request.setStatus(ProcessingStatus.DOWNLOADED);
+
+        Item updatedItem = new Item();
+        updatedItem.setVideoId(videoId);
+        updatedItem.setStatus(ProcessingStatus.DOWNLOADED);
+        // storedThumbnailPath is intentionally null
+
+        ItemUpdateResult result = new ItemUpdateResult(updatedItem, List.of("warning"));
+        when(itemService.updateItemFileInfo(videoId, "task2", 1000L, "/path/to/file", ProcessingStatus.DOWNLOADED))
+                .thenReturn(result);
+
+        ResponseEntity<ApiResponse<ItemResponse>> response = itemController.updateItemFileInfo(videoId, request);
+        ApiResponse<ItemResponse> body = response.getBody();
+        Objects.requireNonNull(body);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(storageService, never()).getFileAccessUrl(anyString());
     }
 }
