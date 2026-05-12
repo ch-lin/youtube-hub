@@ -29,11 +29,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -53,6 +55,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -73,6 +77,7 @@ import ch.lin.youtube.hub.backend.api.domain.model.Item;
 import ch.lin.youtube.hub.backend.api.domain.model.LiveBroadcastContent;
 import ch.lin.youtube.hub.backend.api.domain.model.Playlist;
 import ch.lin.youtube.hub.backend.api.domain.model.ProcessingStatus;
+import ch.lin.youtube.hub.backend.api.domain.model.ThumbnailStatus;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Fetch;
@@ -100,6 +105,8 @@ class YoutubeHubServiceImplTest {
     private ChannelProcessingService channelProcessingService;
     @Mock
     private VideoFetchService videoFetchService;
+    @Mock
+    private ThumbnailService thumbnailService;
 
     private YoutubeHubServiceImpl service;
 
@@ -107,7 +114,7 @@ class YoutubeHubServiceImplTest {
     @SuppressWarnings("unused")
     void setUp() {
         service = new YoutubeHubServiceImpl(channelRepository, itemRepository, playlistRepository, tagRepository,
-                downloadInfoRepository, configsService, channelProcessingService, videoFetchService);
+                downloadInfoRepository, configsService, channelProcessingService, videoFetchService, thumbnailService);
         ReflectionTestUtils.setField(service, "downloaderServiceUrl", "http://localhost:8081");
     }
 
@@ -178,7 +185,7 @@ class YoutubeHubServiceImplTest {
 
     @Test
     void verifyNewItems_ShouldSkipInvalidUrls() {
-        // 測試無法解析 videoId 的 URL (非 YouTube 域名)
+        // Test URL where videoId cannot be parsed (non-YouTube domain)
         String invalidUrl = "https://google.com";
 
         Map<String, List<String>> result = service.verifyNewItems(List.of(invalidUrl));
@@ -189,7 +196,7 @@ class YoutubeHubServiceImplTest {
 
     @Test
     void verifyNewItems_ShouldExcludeManuallyDownloadedItems() {
-        // 測試狀態為 MANUALLY_DOWNLOADED 的項目不應包含在 undownloaded 列表中
+        // Test that items with MANUALLY_DOWNLOADED status should not be included in the undownloaded list
         String url = "https://www.youtube.com/watch?v=manual";
         Item item = new Item();
         item.setVideoId("manual");
@@ -205,7 +212,7 @@ class YoutubeHubServiceImplTest {
 
     @Test
     void verifyNewItems_ShouldHandleBlankVideoIdFromUrl() {
-        // 測試解析出空白 videoId 的情況 (例如 URL 路徑解碼後為空白)
+        // Test scenario where parsed videoId is blank (e.g., URL path becomes blank after decoding)
         // https://youtu.be/%20 -> path is "/ ", split gives ["", " "], reduce gives " "
         String blankIdUrl = "https://youtu.be/%20";
 
@@ -308,20 +315,20 @@ class YoutubeHubServiceImplTest {
     @Test
     @SuppressWarnings({"null", "unchecked"})
     void markAllManuallyDownloaded_ShouldReturnZero_WhenNoItemsFound() {
-        // 測試情境：資料庫中沒有符合條件的項目
+        // Test scenario: No matching items in the database
         when(itemRepository.findAll(any(Specification.class))).thenReturn(Collections.emptyList());
 
         int count = service.markAllManuallyDownloaded(List.of("ch1"));
 
         assertThat(count).isEqualTo(0);
-        // 驗證不應呼叫 saveAll，因為沒有項目需要更新
+        // Verify saveAll is not called because there are no items to update
         verify(itemRepository, never()).saveAll(anyList());
     }
 
     @Test
     @SuppressWarnings({"null", "unchecked"})
     void markAllManuallyDownloaded_ShouldHandleNullChannelIds() {
-        // 測試情境：channelIds 為 null (表示針對所有頻道)
+        // Test scenario: channelIds is null (applies to all channels)
         Item item = new Item();
         item.setStatus(ProcessingStatus.NEW);
         when(itemRepository.findAll(any(Specification.class))).thenReturn(List.of(item));
@@ -336,7 +343,7 @@ class YoutubeHubServiceImplTest {
     @Test
     @SuppressWarnings({"null", "unchecked"})
     void markAllManuallyDownloaded_ShouldHandleEmptyChannelIds() {
-        // 測試情境：channelIds 為空列表 (表示針對所有頻道)
+        // Test scenario: channelIds is an empty list (applies to all channels)
         Item item = new Item();
         item.setStatus(ProcessingStatus.NEW);
         when(itemRepository.findAll(any(Specification.class))).thenReturn(List.of(item));
@@ -1220,5 +1227,208 @@ class YoutubeHubServiceImplTest {
         }
 
         verify(itemRepository, never()).findAllByVideoPublishedAtAfterAndPlaylistChannelChannelIdIn(any(), any());
+    }
+
+    @Test
+    void getThumbnailCounts_ShouldCallThumbnailService() {
+        Map<String, Long> expectedCounts = Map.of("totalCount", 100L, "pendingCount", 10L, "failedCount", 5L);
+        when(thumbnailService.getThumbnailCounts()).thenReturn(expectedCounts);
+
+        Map<String, Long> actualCounts = service.getThumbnailCounts();
+
+        assertThat(actualCounts).isEqualTo(expectedCounts);
+        verify(thumbnailService).getThumbnailCounts();
+    }
+
+    @Test
+    void resetUnavailableThumbnails_ShouldResetAll_WhenVideoIdsIsNull() {
+        when(itemRepository.resetAllUnavailableThumbnails(ThumbnailStatus.PENDING, ThumbnailStatus.UNAVAILABLE)).thenReturn(5);
+
+        int result = service.resetUnavailableThumbnails(null);
+
+        assertThat(result).isEqualTo(5);
+        verify(itemRepository).resetAllUnavailableThumbnails(ThumbnailStatus.PENDING, ThumbnailStatus.UNAVAILABLE);
+        verify(itemRepository, never()).resetUnavailableThumbnailsByVideoIds(any(), any(), any());
+    }
+
+    @Test
+    void resetUnavailableThumbnails_ShouldResetAll_WhenVideoIdsIsEmpty() {
+        when(itemRepository.resetAllUnavailableThumbnails(ThumbnailStatus.PENDING, ThumbnailStatus.UNAVAILABLE)).thenReturn(3);
+
+        int result = service.resetUnavailableThumbnails(Collections.emptyList());
+
+        assertThat(result).isEqualTo(3);
+        verify(itemRepository).resetAllUnavailableThumbnails(ThumbnailStatus.PENDING, ThumbnailStatus.UNAVAILABLE);
+        verify(itemRepository, never()).resetUnavailableThumbnailsByVideoIds(any(), any(), any());
+    }
+
+    @Test
+    void resetUnavailableThumbnails_ShouldResetSpecific_WhenVideoIdsProvided() {
+        List<String> videoIds = List.of("vid1", "vid2");
+        when(itemRepository.resetUnavailableThumbnailsByVideoIds(videoIds, ThumbnailStatus.PENDING, ThumbnailStatus.UNAVAILABLE)).thenReturn(2);
+
+        int result = service.resetUnavailableThumbnails(videoIds);
+
+        assertThat(result).isEqualTo(2);
+        verify(itemRepository).resetUnavailableThumbnailsByVideoIds(videoIds, ThumbnailStatus.PENDING, ThumbnailStatus.UNAVAILABLE);
+        verify(itemRepository, never()).resetAllUnavailableThumbnails(any(), any());
+    }
+
+    @Nested
+    @SuppressWarnings("unused")
+    @org.junit.jupiter.api.DisplayName("Tests for syncMissingThumbnailsBackground method")
+    class SyncMissingThumbnailsBackgroundTests {
+
+        @Test
+        void isThumbnailSyncRunning_ShouldReturnFalseInitially() {
+            assertThat(service.isThumbnailSyncRunning()).isFalse();
+        }
+
+        @Test
+        void syncMissingThumbnailsBackground_ShouldReturnEarly_WhenAlreadyRunning() {
+            // Simulate another thread already running
+            ReflectionTestUtils.setField(Objects.requireNonNull(service), "isSyncingThumbnails", new java.util.concurrent.atomic.AtomicBoolean(true));
+
+            service.syncMissingThumbnailsBackground();
+
+            // Verify execution does not proceed further
+            verify(configsService, never()).getResolvedConfig(any());
+        }
+
+        @Test
+        void syncMissingThumbnailsBackground_ShouldBreak_WhenNoPendingItems() {
+            HubConfig config = new HubConfig();
+            when(configsService.getResolvedConfig(null)).thenReturn(config);
+
+            when(itemRepository.findPendingThumbnailsWithNullsFirst(anyList(), any(PageRequest.class)))
+                    .thenReturn(new PageImpl<>(Objects.requireNonNull(Collections.emptyList())));
+
+            service.syncMissingThumbnailsBackground();
+
+            verify(thumbnailService, never()).downloadThumbnail(any());
+            assertThat(service.isThumbnailSyncRunning()).isFalse();
+        }
+
+        @Test
+        void syncMissingThumbnailsBackground_ShouldProcessItems_AndBreakWhenFinished() {
+            HubConfig config = new HubConfig();
+            config.setApiCallDelay(0L); // Avoid actual sleep to prevent slowing down the test
+            when(configsService.getResolvedConfig(null)).thenReturn(config);
+
+            Item item = new Item();
+            item.setVideoId("v1");
+            item.setThumbnailStatus(ThumbnailStatus.PENDING);
+
+            // First page returns 1 item, second page returns empty to end the loop
+            when(itemRepository.findPendingThumbnailsWithNullsFirst(anyList(), any(PageRequest.class)))
+                    .thenReturn(new PageImpl<>(Objects.requireNonNull(List.of(item))))
+                    .thenReturn(new PageImpl<>(Objects.requireNonNull(Collections.emptyList())));
+
+            // Simulate ThumbnailService successfully downloading, status changed
+            org.mockito.Mockito.doAnswer(invocation -> {
+                item.setThumbnailStatus(ThumbnailStatus.DOWNLOADED);
+                return null;
+            }).when(thumbnailService).downloadThumbnail(item);
+
+            service.syncMissingThumbnailsBackground();
+
+            verify(thumbnailService, times(1)).downloadThumbnail(item);
+            assertThat(service.isThumbnailSyncRunning()).isFalse();
+        }
+
+        @Test
+        void syncMissingThumbnailsBackground_ShouldBreakEarly_WhenNoProgressMade() {
+            HubConfig config = new HubConfig();
+            config.setApiCallDelay(0L);
+            when(configsService.getResolvedConfig(null)).thenReturn(config);
+
+            Item item = new Item();
+            item.setVideoId("v1");
+            item.setThumbnailStatus(ThumbnailStatus.PENDING); // Status remains unchanged
+
+            when(itemRepository.findPendingThumbnailsWithNullsFirst(anyList(), any(PageRequest.class)))
+                    .thenReturn(new PageImpl<>(Objects.requireNonNull(List.of(item))));
+
+            service.syncMissingThumbnailsBackground();
+
+            // Because no progress was made, it breaks after one batch to prevent infinite loops
+            verify(thumbnailService, times(1)).downloadThumbnail(item);
+            assertThat(service.isThumbnailSyncRunning()).isFalse();
+        }
+
+        @Test
+        void syncMissingThumbnailsBackground_ShouldHandleExceptionAndResetFlag() {
+            when(configsService.getResolvedConfig(null)).thenThrow(new RuntimeException("Simulated config error"));
+
+            service.syncMissingThumbnailsBackground();
+
+            // Exception is caught and logged, the execution flag must be reset in finally block
+            assertThat(service.isThumbnailSyncRunning()).isFalse();
+        }
+
+        @Test
+        void syncMissingThumbnailsBackground_ShouldRestoreInterruptFlag_WhenInterrupted() {
+            HubConfig config = new HubConfig();
+            config.setApiCallDelay(100L); // Must be > 0 to trigger Thread.sleep in delaySync
+            when(configsService.getResolvedConfig(null)).thenReturn(config);
+
+            Item item = new Item();
+            item.setThumbnailStatus(ThumbnailStatus.DOWNLOADED); // Force progressMade = true to enter sleep
+            when(itemRepository.findPendingThumbnailsWithNullsFirst(anyList(), any(PageRequest.class)))
+                    .thenReturn(new PageImpl<>(Objects.requireNonNull(List.of(item))));
+
+            Thread.currentThread().interrupt(); // Interrupt the thread before testing
+            service.syncMissingThumbnailsBackground();
+
+            assertThat(Thread.interrupted()).isTrue(); // Verify Thread interrupted flag is restored, and clear it for subsequent tests
+        }
+
+        @Test
+        void syncMissingThumbnailsBackground_ShouldMakeProgress_WhenStatusIsUnavailable() {
+            HubConfig config = new HubConfig();
+            config.setApiCallDelay(0L);
+            when(configsService.getResolvedConfig(null)).thenReturn(config);
+
+            Item item = new Item();
+            item.setVideoId("v1");
+            item.setThumbnailStatus(ThumbnailStatus.PENDING);
+
+            when(itemRepository.findPendingThumbnailsWithNullsFirst(anyList(), any(PageRequest.class)))
+                    .thenReturn(new PageImpl<>(Objects.requireNonNull(List.of(item))))
+                    .thenReturn(new PageImpl<>(Objects.requireNonNull(Collections.emptyList())));
+
+            // Simulate ThumbnailService returning UNAVAILABLE to cover the False || True branch
+            org.mockito.Mockito.doAnswer(invocation -> {
+                item.setThumbnailStatus(ThumbnailStatus.UNAVAILABLE);
+                return null;
+            }).when(thumbnailService).downloadThumbnail(item);
+
+            service.syncMissingThumbnailsBackground();
+
+            verify(thumbnailService, times(1)).downloadThumbnail(item);
+            assertThat(service.isThumbnailSyncRunning()).isFalse();
+        }
+
+        @Test
+        void syncMissingThumbnailsBackground_ShouldDelay_WhenApiCallDelayIsPositive() {
+            HubConfig config = new HubConfig();
+            config.setApiCallDelay(1L); // Set a delay > 0 to properly cover Thread.sleep()
+            when(configsService.getResolvedConfig(null)).thenReturn(config);
+
+            Item item = new Item();
+            item.setVideoId("v1");
+            item.setThumbnailStatus(ThumbnailStatus.PENDING);
+
+            when(itemRepository.findPendingThumbnailsWithNullsFirst(anyList(), any(PageRequest.class)))
+                    .thenReturn(new PageImpl<>(Objects.requireNonNull(List.of(item))))
+                    .thenReturn(new PageImpl<>(Objects.requireNonNull(Collections.emptyList())));
+
+            org.mockito.Mockito.doAnswer(invocation -> {
+                item.setThumbnailStatus(ThumbnailStatus.DOWNLOADED);
+                return null;
+            }).when(thumbnailService).downloadThumbnail(item);
+
+            service.syncMissingThumbnailsBackground();
+        }
     }
 }

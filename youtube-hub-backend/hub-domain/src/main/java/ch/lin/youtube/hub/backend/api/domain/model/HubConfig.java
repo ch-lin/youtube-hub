@@ -30,6 +30,8 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
@@ -50,7 +52,7 @@ import lombok.Setter;
 @AllArgsConstructor
 @EqualsAndHashCode(of = {"name", "enabled", "youtubeApiKey", "clientId", "clientSecret",
     "autoStartFetchScheduler", "schedulerType", "fixedRate", "cronExpression",
-    "cronTimeZone", "quota", "quotaSafetyThreshold", "apiCallDelay", "activeVideosSyncDays"}, callSuper = false)
+    "cronTimeZone", "quota", "quotaSafetyThreshold", "apiCallDelay", "activeVideosSyncDays", "maxThumbnailRetries"}, callSuper = false)
 public class HubConfig {
 
     /**
@@ -127,6 +129,11 @@ public class HubConfig {
      * The name of the active videos sync days column in the database.
      */
     public static final String ACTIVE_VIDEOS_SYNC_DAYS_COLUMN = "active_videos_sync_days";
+
+    /**
+     * The name of the max thumbnail retries column in the database.
+     */
+    public static final String MAX_THUMBNAIL_RETRIES_COLUMN = "max_thumbnail_retries";
 
     /**
      * The primary key and unique name for this configuration profile (e.g.,
@@ -220,4 +227,12 @@ public class HubConfig {
      */
     @Column(name = HubConfig.ACTIVE_VIDEOS_SYNC_DAYS_COLUMN)
     private Integer activeVideosSyncDays = 30;
+
+    /**
+     * The maximum number of retries for downloading thumbnails. Defaults to 3.
+     */
+    @Min(0)
+    @Max(10)
+    @Column(name = HubConfig.MAX_THUMBNAIL_RETRIES_COLUMN)
+    private Integer maxThumbnailRetries = 3;
 }

@@ -42,6 +42,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import ch.lin.platform.api.ApiResponse;
 import ch.lin.youtube.hub.backend.api.app.service.ItemService;
+import ch.lin.youtube.hub.backend.api.app.service.StorageService;
 import ch.lin.youtube.hub.backend.api.app.service.model.ItemUpdateResult;
 import ch.lin.youtube.hub.backend.api.domain.model.Item;
 import ch.lin.youtube.hub.backend.api.dto.ItemResponse;
@@ -60,9 +61,11 @@ import jakarta.validation.Valid;
 public class ItemController {
 
     private final ItemService itemService;
+    private final StorageService storageService;
 
-    public ItemController(ItemService itemService) {
+    public ItemController(ItemService itemService, StorageService storageService) {
         this.itemService = itemService;
+        this.storageService = storageService;
     }
 
     /**
@@ -120,7 +123,10 @@ public class ItemController {
         Page<Item> items = itemService.getItems(
                 notDownloaded, filterNoFileSize, liveBroadcastContent, scheduledTimeIsInThePast,
                 filterNoTag, filterDeleted, channelIds, effectivePageable);
-        Page<ItemResponse> response = items.map(ItemResponse::new);
+        Page<ItemResponse> response = items.map(item -> {
+            String resolvedUrl = item.getStoredThumbnailPath() != null ? storageService.getFileAccessUrl(item.getStoredThumbnailPath()) : null;
+            return new ItemResponse(item, resolvedUrl);
+        });
         return ResponseEntity.ok(response);
     }
 
@@ -154,8 +160,12 @@ public class ItemController {
             @Valid @RequestBody final UpdateItemRequest request) {
         ItemUpdateResult result = itemService.updateItemFileInfo(videoId, request.getDownloadTaskId(),
                 request.getFileSize(), request.getFilePath(), request.getStatus());
-        ApiResponse<ItemResponse> response = ApiResponse.success(new ItemResponse(result.updatedItem()),
-                result.warnings());
+
+        Item updatedItem = result.updatedItem();
+        String resolvedUrl = updatedItem.getStoredThumbnailPath() != null ? storageService.getFileAccessUrl(updatedItem.getStoredThumbnailPath()) : null;
+
+        ApiResponse<ItemResponse> response = ApiResponse.success(new ItemResponse(updatedItem, resolvedUrl), result.warnings());
+
         return ResponseEntity.ok(response);
     }
 

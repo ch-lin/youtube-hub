@@ -55,7 +55,7 @@ class ItemResponseTest {
         item.setStatus(ProcessingStatus.PENDING);
         item.setPlaylist(playlist);
 
-        ItemResponse response = new ItemResponse(item);
+        ItemResponse response = new ItemResponse(item, "http://resolved.url");
 
         assertThat(response.getVideoId()).isEqualTo("vid1");
         assertThat(response.getTitle()).isEqualTo("Test Video");
@@ -70,7 +70,7 @@ class ItemResponseTest {
         item.setVideoId("vid1");
         item.setPlaylist(null);
 
-        ItemResponse response = new ItemResponse(item);
+        ItemResponse response = new ItemResponse(item, null);
 
         assertThat(response.getVideoId()).isEqualTo("vid1");
         assertThat(response.getPlaylistId()).isNull();
@@ -88,7 +88,7 @@ class ItemResponseTest {
         item.setVideoId("vid1");
         item.setPlaylist(playlist);
 
-        ItemResponse response = new ItemResponse(item);
+        ItemResponse response = new ItemResponse(item, null);
 
         assertThat(response.getVideoId()).isEqualTo("vid1");
         assertThat(response.getPlaylistId()).isEqualTo("pl1");

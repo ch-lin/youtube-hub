@@ -27,6 +27,7 @@ import java.time.OffsetDateTime;
 
 import ch.lin.youtube.hub.backend.api.domain.model.Item;
 import ch.lin.youtube.hub.backend.api.domain.model.ProcessingStatus;
+import ch.lin.youtube.hub.backend.api.domain.model.ThumbnailStatus;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -52,6 +53,8 @@ import lombok.NoArgsConstructor;
  *   "channelId": "UC-lHJZR3Gqxm24_Vd_AJ5Yw",
  *   "channelTitle": "Official Channel",
  *   "thumbnailUrl": "https://i.ytimg.com/vi/dQw4w9WgXcQ/default.jpg",
+ *   "resolvedThumbnailUrl": "http://172.16.10.20:9000/youtube-thumbnails/dQw4w9WgXcQ.jpg",
+ *   "thumbnailStatus": "DOWNLOADED",
  *   "status": "PENDING"
  * }
  * }
@@ -111,6 +114,18 @@ public class ItemResponse {
     private String thumbnailUrl;
 
     /**
+     * The fully resolved URL to access the thumbnail directly, generated
+     * dynamically based on the active storage strategy (e.g., S3 public URL or
+     * local API path).
+     */
+    private String resolvedThumbnailUrl;
+
+    /**
+     * The synchronization status of the local thumbnail.
+     */
+    private ThumbnailStatus thumbnailStatus;
+
+    /**
      * The processing status of the item (e.g., PENDING, DOWNLOADED).
      *
      * @see ProcessingStatus
@@ -121,14 +136,18 @@ public class ItemResponse {
      * Constructs a new ItemResponse from an Item domain entity.
      *
      * @param item The {@link Item} entity to map to a response DTO.
+     * @param resolvedThumbnailUrl The storage-specific resolved URL for the
+     * thumbnail.
      */
-    public ItemResponse(Item item) {
+    public ItemResponse(Item item, String resolvedThumbnailUrl) {
         this.videoId = item.getVideoId();
         this.title = item.getTitle();
         this.kind = item.getKind();
         this.videoPublishedAt = item.getVideoPublishedAt();
         this.scheduledStartTime = item.getScheduledStartTime();
         this.thumbnailUrl = item.getThumbnailUrl();
+        this.resolvedThumbnailUrl = resolvedThumbnailUrl;
+        this.thumbnailStatus = item.getThumbnailStatus();
         this.status = item.getStatus();
         if (item.getPlaylist() != null) {
             this.playlistId = item.getPlaylist().getPlaylistId();

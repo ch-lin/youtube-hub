@@ -35,12 +35,16 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -69,6 +73,7 @@ import ch.lin.youtube.hub.backend.api.domain.model.Item;
 import ch.lin.youtube.hub.backend.api.domain.model.LiveBroadcastContent;
 import ch.lin.youtube.hub.backend.api.domain.model.Playlist;
 import ch.lin.youtube.hub.backend.api.domain.model.ProcessingStatus;
+import ch.lin.youtube.hub.backend.api.domain.model.ThumbnailStatus;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 
@@ -95,8 +100,12 @@ public class YoutubeHubServiceImpl implements YoutubeHubService {
     private final ConfigsService configsService;
     private final ChannelProcessingService channelProcessingService;
     private final VideoFetchService videoFetchService;
+    private final ThumbnailService thumbnailService;
     @Value("${youtube.hub.downloader.url}")
     private String downloaderServiceUrl;
+
+    // Lock to prevent multiple background tasks from running simultaneously
+    private final AtomicBoolean isSyncingThumbnails = new AtomicBoolean(false);
 
     /**
      * Constructs a new YoutubeHubServiceImpl with the required dependencies.
@@ -108,11 +117,13 @@ public class YoutubeHubServiceImpl implements YoutubeHubService {
      * @param downloadInfoRepository the repository for download info data
      * access
      * @param configsService the service for accessing application configuration
+     * @param thumbnailService the service for downloading thumbnails
      */
     public YoutubeHubServiceImpl(ChannelRepository channelRepository, ItemRepository itemRepository,
             PlaylistRepository playlistRepository, TagRepository tagRepository,
             DownloadInfoRepository downloadInfoRepository, ConfigsService configsService,
-            ChannelProcessingService channelProcessingService, VideoFetchService videoFetchService) {
+            ChannelProcessingService channelProcessingService, VideoFetchService videoFetchService,
+            ThumbnailService thumbnailService) {
         this.channelRepository = channelRepository;
         this.itemRepository = itemRepository;
         this.playlistRepository = playlistRepository;
@@ -121,6 +132,7 @@ public class YoutubeHubServiceImpl implements YoutubeHubService {
         this.configsService = configsService;
         this.channelProcessingService = channelProcessingService;
         this.videoFetchService = videoFetchService;
+        this.thumbnailService = thumbnailService;
     }
 
     /**
@@ -556,5 +568,112 @@ public class YoutubeHubServiceImpl implements YoutubeHubService {
 
         logger.info("Successfully synced statistics for {} videos.", totalUpdated);
         return Map.of("syncedItems", totalUpdated);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional
+    public int resetUnavailableThumbnails(List<String> videoIds) {
+        logger.info("Starting job to reset UNAVAILABLE thumbnails to PENDING...");
+        int updatedCount;
+        if (videoIds == null || videoIds.isEmpty()) {
+            updatedCount = itemRepository.resetAllUnavailableThumbnails(ThumbnailStatus.PENDING, ThumbnailStatus.UNAVAILABLE);
+        } else {
+            updatedCount = itemRepository.resetUnavailableThumbnailsByVideoIds(videoIds, ThumbnailStatus.PENDING, ThumbnailStatus.UNAVAILABLE);
+        }
+        logger.info("Successfully reset {} thumbnails.", updatedCount);
+        return updatedCount;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Map<String, Long> getThumbnailCounts() {
+        return thumbnailService.getThumbnailCounts();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Async
+    public void syncMissingThumbnailsBackground() {
+        if (!isSyncingThumbnails.compareAndSet(false, true)) {
+            logger.info("Thumbnail sync is already running. Skipping.");
+            return;
+        }
+
+        logger.info("Starting background job to sync missing thumbnails...");
+        try {
+            HubConfig config = configsService.getResolvedConfig(null);
+            long delay = Optional.ofNullable(config.getApiCallDelay()).orElse(100L);
+            int batchSize = 50;
+
+            while (true) {
+                Page<Item> pendingItems = itemRepository.findPendingThumbnailsWithNullsFirst(
+                        Arrays.asList(ThumbnailStatus.PENDING, ThumbnailStatus.TEMP_FAILED),
+                        PageRequest.of(0, batchSize));
+
+                if (pendingItems.isEmpty()) {
+                    logger.info("No missing thumbnails found. Sync complete.");
+                    break;
+                }
+
+                logger.info("Processing batch of {} missing thumbnails. Remaining total: {}",
+                        pendingItems.getNumberOfElements(), pendingItems.getTotalElements());
+
+                boolean progressMade = false;
+                for (Item item : pendingItems.getContent()) {
+                    thumbnailService.downloadThumbnail(item);
+
+                    // Check if the state changed to ensure we aren't stuck on temporary network failures
+                    if (item.getThumbnailStatus() == ThumbnailStatus.DOWNLOADED || item.getThumbnailStatus() == ThumbnailStatus.UNAVAILABLE) {
+                        progressMade = true;
+                    }
+
+                    try {
+                        delaySync(delay);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        logger.warn("Thumbnail sync background job was interrupted.");
+                        return;
+                    }
+                }
+
+                if (!progressMade) {
+                    logger.warn("No progress made in this batch (possibly due to network/temporary issues). Halting sync to prevent infinite loops.");
+                    break;
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Unexpected error during background thumbnail sync.", e);
+        } finally {
+            isSyncingThumbnails.set(false);
+            logger.info("Background thumbnail sync job finished.");
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isThumbnailSyncRunning() {
+        return isSyncingThumbnails.get();
+    }
+
+    /**
+     * Pauses execution for a specified duration to avoid hitting API rate
+     * limits.
+     *
+     * @param milliseconds The number of milliseconds to wait.
+     * @throws InterruptedException if the thread is interrupted while sleeping.
+     */
+    private void delaySync(long milliseconds) throws InterruptedException {
+        if (milliseconds > 0) {
+            Thread.sleep(milliseconds);
+        }
     }
 }

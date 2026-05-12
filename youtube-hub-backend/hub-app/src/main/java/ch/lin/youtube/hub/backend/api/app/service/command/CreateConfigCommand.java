@@ -108,4 +108,9 @@ public class CreateConfigCommand {
      * synchronization.
      */
     Integer activeVideosSyncDays;
+
+    /**
+     * The maximum number of retries for downloading thumbnails.
+     */
+    Integer maxThumbnailRetries;
 }

@@ -206,6 +206,9 @@ public class AutoFetchSchedulerServiceImpl implements AutoFetchSchedulerService 
 
             // Execute the background job to synchronize statistics for older active videos
             youtubeHubService.syncActiveVideosStatistics(null);
+
+            // Execute the background job to download any missing thumbnails
+            youtubeHubService.syncMissingThumbnailsBackground();
         } catch (Exception e) {
             logger.error("Error occurred during scheduled auto-fetch job execution.", e);
         }

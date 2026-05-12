@@ -46,6 +46,10 @@ class ItemTest {
     private LiveBroadcastContent liveBroadcastContent;
     private OffsetDateTime scheduledStartTime;
     private String thumbnailUrl;
+    private String storedThumbnailPath;
+    private ThumbnailStatus thumbnailStatus;
+    private Integer thumbnailRetryCount;
+    private OffsetDateTime thumbnailAttemptedAt;
     private ProcessingStatus status;
     private Playlist playlist;
     private Tag tag;
@@ -61,14 +65,18 @@ class ItemTest {
         liveBroadcastContent = LiveBroadcastContent.NONE;
         scheduledStartTime = OffsetDateTime.now().plusDays(1);
         thumbnailUrl = "http://example.com/thumb.jpg";
+        storedThumbnailPath = "/thumbnails/videoId123.jpg";
+        thumbnailStatus = ThumbnailStatus.DOWNLOADED;
+        thumbnailRetryCount = 0;
+        thumbnailAttemptedAt = null;
         status = ProcessingStatus.DOWNLOADED;
         playlist = new Playlist(); // Using real objects for simplicity
         tag = new Tag();
 
         item1 = new Item(videoId, title, description, kind, videoPublishedAt, liveBroadcastContent, scheduledStartTime,
-                thumbnailUrl, status, playlist, tag, null, null);
+                thumbnailUrl, storedThumbnailPath, thumbnailStatus, thumbnailRetryCount, thumbnailAttemptedAt, status, playlist, tag, null, null);
         item2 = new Item(videoId, title, description, kind, videoPublishedAt, liveBroadcastContent, scheduledStartTime,
-                thumbnailUrl, status, playlist, tag, null, null);
+                thumbnailUrl, storedThumbnailPath, thumbnailStatus, thumbnailRetryCount, thumbnailAttemptedAt, status, playlist, tag, null, null);
     }
 
     @Test
@@ -85,6 +93,10 @@ class ItemTest {
         item.setLiveBroadcastContent(liveBroadcastContent);
         item.setScheduledStartTime(scheduledStartTime);
         item.setThumbnailUrl(thumbnailUrl);
+        item.setStoredThumbnailPath(storedThumbnailPath);
+        item.setThumbnailStatus(thumbnailStatus);
+        item.setThumbnailRetryCount(thumbnailRetryCount);
+        item.setThumbnailAttemptedAt(thumbnailAttemptedAt);
         item.setStatus(status);
         item.setPlaylist(playlist);
         item.setTag(tag);
@@ -99,6 +111,10 @@ class ItemTest {
                 () -> assertEquals(liveBroadcastContent, item.getLiveBroadcastContent()),
                 () -> assertEquals(scheduledStartTime, item.getScheduledStartTime()),
                 () -> assertEquals(thumbnailUrl, item.getThumbnailUrl()),
+                () -> assertEquals(storedThumbnailPath, item.getStoredThumbnailPath()),
+                () -> assertEquals(thumbnailStatus, item.getThumbnailStatus()),
+                () -> assertEquals(thumbnailRetryCount, item.getThumbnailRetryCount()),
+                () -> assertEquals(thumbnailAttemptedAt, item.getThumbnailAttemptedAt()),
                 () -> assertEquals(status, item.getStatus()),
                 () -> assertEquals(playlist, item.getPlaylist()),
                 () -> assertEquals(tag, item.getTag()));
@@ -111,7 +127,9 @@ class ItemTest {
         assertNull(item.getId());
         assertNull(item.getVideoId());
         assertNull(item.getTitle());
+        assertEquals(ThumbnailStatus.PENDING, item.getThumbnailStatus(), "ThumbnailStatus should default to PENDING");
         assertEquals(ProcessingStatus.NEW, item.getStatus(), "Status should default to NEW");
+        assertEquals(0, item.getThumbnailRetryCount(), "ThumbnailRetryCount should return 0 when underlying field is null");
     }
 
     @Test
@@ -121,6 +139,10 @@ class ItemTest {
         assertEquals(videoId, item1.getVideoId());
         assertEquals(description, item1.getDescription());
         assertEquals(title, item1.getTitle());
+        assertEquals(storedThumbnailPath, item1.getStoredThumbnailPath());
+        assertEquals(thumbnailStatus, item1.getThumbnailStatus());
+        assertEquals(thumbnailRetryCount, item1.getThumbnailRetryCount());
+        assertEquals(thumbnailAttemptedAt, item1.getThumbnailAttemptedAt());
         assertEquals(status, item1.getStatus());
         assertEquals(playlist, item1.getPlaylist());
         assertEquals(tag, item1.getTag());

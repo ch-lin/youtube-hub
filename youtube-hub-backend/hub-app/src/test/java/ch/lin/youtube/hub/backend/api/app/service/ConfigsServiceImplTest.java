@@ -148,6 +148,22 @@ class ConfigsServiceImplTest {
     }
 
     @Test
+    void createConfig_ShouldThrowException_WhenMaxThumbnailRetriesIsInvalid() {
+        CreateConfigCommand command = mock(CreateConfigCommand.class);
+        when(command.getName()).thenReturn("new-config");
+
+        when(command.getMaxThumbnailRetries()).thenReturn(-1);
+        assertThatThrownBy(() -> configsService.createConfig(command))
+                .isInstanceOf(InvalidRequestException.class)
+                .hasMessageContaining("Max thumbnail retries must be between 0 and 10");
+
+        when(command.getMaxThumbnailRetries()).thenReturn(11);
+        assertThatThrownBy(() -> configsService.createConfig(command))
+                .isInstanceOf(InvalidRequestException.class)
+                .hasMessageContaining("Max thumbnail retries must be between 0 and 10");
+    }
+
+    @Test
     void saveConfig_ShouldThrowException_WhenTimeZoneIsInvalid() {
         UpdateConfigCommand command = mock(UpdateConfigCommand.class);
         when(command.getName()).thenReturn("existing");
@@ -190,6 +206,20 @@ class ConfigsServiceImplTest {
     }
 
     @Test
+    void saveConfig_ShouldThrowException_WhenMaxThumbnailRetriesIsInvalid() {
+        UpdateConfigCommand command = mock(UpdateConfigCommand.class);
+        when(command.getName()).thenReturn("existing");
+        when(command.getEnabled()).thenReturn(Optional.empty());
+        when(command.getMaxThumbnailRetries()).thenReturn(Optional.of(-1));
+
+        when(hubConfigRepository.findByName("existing")).thenReturn(Optional.of(new HubConfig()));
+
+        assertThatThrownBy(() -> configsService.saveConfig(command))
+                .isInstanceOf(InvalidRequestException.class)
+                .hasMessageContaining("Max thumbnail retries must be between 0 and 10");
+    }
+
+    @Test
     @SuppressWarnings("null")
     void createConfig_ShouldSucceed_WhenCronAndTimeZoneAreValid() {
         CreateConfigCommand command = mock(CreateConfigCommand.class);
@@ -198,6 +228,7 @@ class ConfigsServiceImplTest {
         when(command.getCronTimeZone()).thenReturn("Asia/Taipei");
         when(command.getQuota()).thenReturn(50000L);
         when(command.getQuotaSafetyThreshold()).thenReturn(1000L);
+        when(command.getMaxThumbnailRetries()).thenReturn(5);
 
         when(hubConfigRepository.findByName("valid-config")).thenReturn(Optional.empty());
         when(hubConfigRepository.save(any())).thenAnswer(i -> i.getArgument(0));
@@ -208,6 +239,7 @@ class ConfigsServiceImplTest {
         assertThat(created.getCronTimeZone()).isEqualTo("Asia/Taipei");
         assertThat(created.getQuota()).isEqualTo(50000L);
         assertThat(created.getQuotaSafetyThreshold()).isEqualTo(1000L);
+        assertThat(created.getMaxThumbnailRetries()).isEqualTo(5);
     }
 
     @Test
@@ -215,6 +247,7 @@ class ConfigsServiceImplTest {
     void createConfig_ShouldSucceed_WhenOptionalFieldsAreNull() {
         CreateConfigCommand command = new CreateConfigCommand(
                 "config-nulls",
+                null,
                 null,
                 null,
                 null,
@@ -260,6 +293,7 @@ class ConfigsServiceImplTest {
         when(command.getQuotaSafetyThreshold()).thenReturn(Optional.empty());
         when(command.getApiCallDelay()).thenReturn(Optional.empty());
         when(command.getActiveVideosSyncDays()).thenReturn(Optional.empty());
+        when(command.getMaxThumbnailRetries()).thenReturn(Optional.empty());
 
         HubConfig existing = new HubConfig();
         existing.setName("existing");
@@ -274,7 +308,6 @@ class ConfigsServiceImplTest {
         assertThat(updated.getCronTimeZone()).isEqualTo("UTC");
     }
 
-    @SuppressWarnings("null")
     @Test
     void createConfig_ShouldThrowException_WhenNameIsDefault() {
         CreateConfigCommand command = mock(CreateConfigCommand.class);
@@ -436,6 +469,7 @@ class ConfigsServiceImplTest {
         when(command.getQuotaSafetyThreshold()).thenReturn(Optional.of(1000L));
         when(command.getApiCallDelay()).thenReturn(Optional.empty());
         when(command.getActiveVideosSyncDays()).thenReturn(Optional.empty());
+        when(command.getMaxThumbnailRetries()).thenReturn(Optional.of(8));
 
         HubConfig existingConfig = new HubConfig();
         existingConfig.setName(configName);
@@ -455,6 +489,7 @@ class ConfigsServiceImplTest {
         assertThat(updated.getAutoStartFetchScheduler()).isTrue();
         assertThat(updated.getQuota()).isEqualTo(20000L);
         assertThat(updated.getQuotaSafetyThreshold()).isEqualTo(1000L);
+        assertThat(updated.getMaxThumbnailRetries()).isEqualTo(8);
         verify(hubConfigRepository).save(existingConfig);
     }
 
@@ -492,6 +527,7 @@ class ConfigsServiceImplTest {
         dbConfig.setQuotaSafetyThreshold(null);
         dbConfig.setApiCallDelay(null);
         dbConfig.setActiveVideosSyncDays(null);
+        dbConfig.setMaxThumbnailRetries(null);
         // enabled is null, apiKey is null
 
         HubConfig defaultConfig = new HubConfig();
@@ -507,6 +543,7 @@ class ConfigsServiceImplTest {
         defaultConfig.setQuotaSafetyThreshold(500L);
         defaultConfig.setApiCallDelay(200L);
         defaultConfig.setActiveVideosSyncDays(45);
+        defaultConfig.setMaxThumbnailRetries(5);
 
         when(hubConfigRepository.findByName("custom")).thenReturn(Optional.of(dbConfig));
         when(defaultConfigFactory.create(defaultProperties)).thenReturn(defaultConfig);
@@ -525,6 +562,7 @@ class ConfigsServiceImplTest {
         assertThat(result.getQuotaSafetyThreshold()).isEqualTo(500L);
         assertThat(result.getApiCallDelay()).isEqualTo(200L);
         assertThat(result.getActiveVideosSyncDays()).isEqualTo(45);
+        assertThat(result.getMaxThumbnailRetries()).isEqualTo(5);
     }
 
     @Test
@@ -587,6 +625,7 @@ class ConfigsServiceImplTest {
         when(command.getQuotaSafetyThreshold()).thenReturn(Optional.empty());
         when(command.getApiCallDelay()).thenReturn(Optional.empty());
         when(command.getActiveVideosSyncDays()).thenReturn(Optional.empty());
+        when(command.getMaxThumbnailRetries()).thenReturn(Optional.empty());
 
         when(hubConfigRepository.findByName(configName)).thenReturn(Optional.empty());
         when(hubConfigRepository.save(any())).thenAnswer(i -> i.getArgument(0));
@@ -622,6 +661,7 @@ class ConfigsServiceImplTest {
         when(command.getQuotaSafetyThreshold()).thenReturn(Optional.empty());
         when(command.getApiCallDelay()).thenReturn(Optional.empty());
         when(command.getActiveVideosSyncDays()).thenReturn(Optional.empty());
+        when(command.getMaxThumbnailRetries()).thenReturn(Optional.empty());
 
         HubConfig otherConfig = new HubConfig();
         otherConfig.setName("other");
@@ -658,6 +698,7 @@ class ConfigsServiceImplTest {
         when(command.getQuotaSafetyThreshold()).thenReturn(Optional.empty());
         when(command.getApiCallDelay()).thenReturn(Optional.empty());
         when(command.getActiveVideosSyncDays()).thenReturn(Optional.empty());
+        when(command.getMaxThumbnailRetries()).thenReturn(Optional.empty());
 
         HubConfig currentConfig = new HubConfig();
         currentConfig.setName(configName);
@@ -707,6 +748,7 @@ class ConfigsServiceImplTest {
         dbConfig.setQuotaSafetyThreshold(200L);
         dbConfig.setApiCallDelay(150L);
         dbConfig.setActiveVideosSyncDays(15);
+        dbConfig.setMaxThumbnailRetries(8);
 
         when(hubConfigRepository.findByName("custom")).thenReturn(Optional.of(dbConfig));
 
@@ -721,6 +763,7 @@ class ConfigsServiceImplTest {
         defaultConfig.setQuotaSafetyThreshold(500L);
         defaultConfig.setApiCallDelay(100L);
         defaultConfig.setActiveVideosSyncDays(30);
+        defaultConfig.setMaxThumbnailRetries(3);
         when(defaultConfigFactory.create(defaultProperties)).thenReturn(defaultConfig);
 
         HubConfig result = configsService.getResolvedConfig("custom");
@@ -735,6 +778,7 @@ class ConfigsServiceImplTest {
         assertThat(result.getQuotaSafetyThreshold()).isEqualTo(200L);
         assertThat(result.getApiCallDelay()).isEqualTo(150L);
         assertThat(result.getActiveVideosSyncDays()).isEqualTo(15);
+        assertThat(result.getMaxThumbnailRetries()).isEqualTo(8);
     }
 
     @SuppressWarnings("null")

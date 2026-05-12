@@ -23,36 +23,34 @@
  *===========================================================================*/
 package ch.lin.youtube.hub.backend.api.app.config;
 
+import java.util.Objects;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
-class HubDefaultPropertiesTest {
+import software.amazon.awssdk.services.s3.S3Client;
 
-    @Test
-    void testDefaults() {
-        HubDefaultProperties properties = new HubDefaultProperties();
-        assertThat(properties.getName()).isEqualTo("default");
-        assertThat(properties.getEnabled()).isTrue();
-        assertThat(properties.getQuota()).isEqualTo(10000L);
-        assertThat(properties.getQuotaSafetyThreshold()).isEqualTo(500L);
-        assertThat(properties.getMaxThumbnailRetries()).isEqualTo(3);
+class S3ConfigTest {
+
+    private S3Config s3Config;
+
+    @BeforeEach
+    @SuppressWarnings("unused")
+    void setUp() {
+        s3Config = new S3Config();
+        // Inject necessary fields that are usually populated by Spring's @Value
+        ReflectionTestUtils.setField(s3Config, "endpoint", "http://localhost:9000");
+        ReflectionTestUtils.setField(Objects.requireNonNull(s3Config), "accessKey", "test-access-key");
+        ReflectionTestUtils.setField(Objects.requireNonNull(s3Config), "secretKey", "test-secret-key");
+        ReflectionTestUtils.setField(Objects.requireNonNull(s3Config), "region", "us-east-1");
     }
 
     @Test
-    void testSettersAndGetters() {
-        HubDefaultProperties properties = new HubDefaultProperties();
-        properties.setYoutubeApiKey("key");
-        properties.setClientId("id");
-        properties.setClientSecret("secret");
-        properties.setQuota(20000L);
-        properties.setQuotaSafetyThreshold(1000L);
-        properties.setMaxThumbnailRetries(5);
+    void s3Client_ShouldCreateS3ClientSuccessfully() {
+        S3Client s3Client = s3Config.s3Client();
 
-        assertThat(properties.getYoutubeApiKey()).isEqualTo("key");
-        assertThat(properties.getClientId()).isEqualTo("id");
-        assertThat(properties.getClientSecret()).isEqualTo("secret");
-        assertThat(properties.getQuota()).isEqualTo(20000L);
-        assertThat(properties.getQuotaSafetyThreshold()).isEqualTo(1000L);
-        assertThat(properties.getMaxThumbnailRetries()).isEqualTo(5);
+        assertThat(s3Client).isNotNull();
     }
 }

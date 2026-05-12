@@ -30,6 +30,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -247,5 +248,77 @@ public class YoutubeHubController {
             @RequestParam(name = "channelIds", required = false) List<String> channelIds) {
         Map<String, Object> result = youtubeHubService.syncActiveVideosStatistics(channelIds);
         return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    /**
+     * Resets UNAVAILABLE thumbnails back to PENDING so they can be retried by
+     * the background job.
+     *
+     * @param request An optional request body containing a list of video IDs to
+     * reset. If omitted, all UNAVAILABLE items will be reset.
+     * @return A {@link ResponseEntity} with an {@link ApiResponse} containing
+     * the count of reset items and an HTTP 200 OK status.
+     * <p>
+     * Example cURL request:
+     *
+     * <pre>
+     * {@code curl -X PATCH http://localhost:8080/tasks/reset-unavailable-thumbnails}
+     * </pre>
+     */
+    @PatchMapping(value = "/reset-unavailable-thumbnails", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ApiResponse<Map<String, Integer>>> resetUnavailableThumbnails(
+            @RequestBody(required = false) Map<String, List<String>> request) {
+        List<String> videoIds = (request != null) ? request.get("videoIds") : null;
+        int resetCount = youtubeHubService.resetUnavailableThumbnails(videoIds);
+        Map<String, Integer> detail = Map.of("resetItems", resetCount);
+        return ResponseEntity.ok(ApiResponse.success(detail));
+    }
+
+    /**
+     * Retrieves the current status of the background thumbnail synchronization
+     * job.
+     *
+     * @return A {@link ResponseEntity} containing an {@link ApiResponse} with a
+     * map indicating if the job is running, pending count, failed count, and
+     * total count.
+     * <p>
+     * Example cURL request:      <pre>
+     * {@code curl -X GET http://localhost:8080/tasks/sync-thumbnails}
+     * </pre>
+     */
+    @GetMapping(value = "/sync-thumbnails", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getThumbnailsSyncStatus() {
+        boolean isRunning = youtubeHubService.isThumbnailSyncRunning();
+        Map<String, Long> counts = youtubeHubService.getThumbnailCounts();
+        return ResponseEntity.ok(ApiResponse.success(Map.<String, Object>of(
+                "isRunning", isRunning,
+                "pendingCount", counts.get("pendingCount"),
+                "failedCount", counts.get("failedCount"),
+                "totalCount", counts.get("totalCount")
+        )));
+    }
+
+    /**
+     * Manually triggers the background synchronization of missing thumbnails.
+     *
+     * @return A {@link ResponseEntity} containing an {@link ApiResponse} with a
+     * confirmation message. Returns 202 Accepted if started, or 200 OK if
+     * already running.
+     * <p>
+     * Example cURL requests:
+     *
+     * <pre>
+     * {@code
+     * curl -X POST http://localhost:8080/tasks/sync-thumbnails
+     * }
+     * </pre>
+     */
+    @PostMapping(value = "/sync-thumbnails", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ApiResponse<String>> triggerThumbnailsSync() {
+        if (youtubeHubService.isThumbnailSyncRunning()) {
+            return ResponseEntity.ok(ApiResponse.success("Thumbnail sync is already running in the background."));
+        }
+        youtubeHubService.syncMissingThumbnailsBackground();
+        return ResponseEntity.accepted().body(ApiResponse.success("Background thumbnail sync job started."));
     }
 }

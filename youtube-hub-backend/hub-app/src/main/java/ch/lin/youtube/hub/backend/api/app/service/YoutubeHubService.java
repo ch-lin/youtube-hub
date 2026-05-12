@@ -114,4 +114,38 @@ public interface YoutubeHubService {
      * total number of synced videos.
      */
     Map<String, Object> syncActiveVideosStatistics(List<String> channelIds);
+
+    /**
+     * Resets thumbnails that have permanently failed back to the PENDING state.
+     *
+     * @param videoIds An optional list of video IDs to reset. If null or empty,
+     * resets all.
+     * @return The number of items successfully reset.
+     */
+    int resetUnavailableThumbnails(List<String> videoIds);
+
+    /**
+     * Initiates a background job to continuously synchronize missing
+     * thumbnails.
+     * <p>
+     * This method runs asynchronously. It processes missing thumbnails in
+     * batches with a safe delay to avoid rate limits, until all missing
+     * thumbnails are downloaded or marked as failed.
+     */
+    void syncMissingThumbnailsBackground();
+
+    /**
+     * Checks if the background thumbnail synchronization job is currently
+     * running.
+     *
+     * @return true if the job is running, false otherwise.
+     */
+    boolean isThumbnailSyncRunning();
+
+    /**
+     * Gets the aggregated counts of thumbnails (total, pending, failed).
+     *
+     * @return a map containing the counts.
+     */
+    Map<String, Long> getThumbnailCounts();
 }

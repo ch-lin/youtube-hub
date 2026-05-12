@@ -85,6 +85,8 @@ services:
       - SERVER_PORT=8080
       # Configure CORS allowed origins
       - CORS_ALLOWED_ORIGIN_PATTERNS=${CORS_ALLOWED_ORIGIN_PATTERNS}
+      # Configure Hotlink protection
+      - PLATFORM_SECURITY_HOTLINK_ALLOWED_ORIGINS=${PLATFORM_SECURITY_HOTLINK_ALLOWED_ORIGINS:-${CORS_ALLOWED_ORIGIN_PATTERNS}}
       # Override the downloader URL to use the Docker service name
       - YOUTUBE_HUB_DOWNLOADER_URL=${PUBLIC_DOWNLOADER_URL:-http://downloader-backend:8080}
       # Override the JWT issuer URI to use the authentication service's Docker service name
@@ -96,6 +98,17 @@ services:
       - YOUTUBE_HUB_DEFAULT_CONFIG_CLIENT_SECRET=${YOUTUBE_HUB_DEFAULT_CONFIG_CLIENT_SECRET}
       # Explicitly disable Spring Boot's "Debug Mode" (auto-config report) so it doesn't conflict with Next.js DEBUG var.
       - DEBUG=false
+      # Set the storage path for thumbnails inside the container
+      - YOUTUBE_HUB_THUMBNAIL_STORAGE_PATH=/app/thumbnails/
+      
+      # S3 / MinIO Storage Configuration (Safely mapped for environments passing secrets via CLI --env-file)
+      - YOUTUBE_HUB_STORAGE_TYPE=${YOUTUBE_HUB_STORAGE_TYPE:-local}
+      - YOUTUBE_HUB_STORAGE_S3_ENDPOINT=${YOUTUBE_HUB_STORAGE_S3_ENDPOINT:-}
+      - YOUTUBE_HUB_STORAGE_S3_ACCESS_KEY=${YOUTUBE_HUB_STORAGE_S3_ACCESS_KEY:-}
+      - YOUTUBE_HUB_STORAGE_S3_SECRET_KEY=${YOUTUBE_HUB_STORAGE_S3_SECRET_KEY:-}
+      - YOUTUBE_HUB_STORAGE_S3_REGION=${YOUTUBE_HUB_STORAGE_S3_REGION:-us-east-1}
+      - YOUTUBE_HUB_STORAGE_S3_BUCKET_NAME=${YOUTUBE_HUB_STORAGE_S3_BUCKET_NAME:-youtube-thumbnails}
+      - YOUTUBE_HUB_STORAGE_S3_PUBLIC_URL=${YOUTUBE_HUB_STORAGE_S3_PUBLIC_URL:-}
     # Set memory limits for standard 'docker-compose up'
     mem_limit: 1024M
     healthcheck:
@@ -108,6 +121,9 @@ services:
       retries: 5
       # Grace period for startup. Checks every 5s during this time.
       start_period: 60s
+    volumes:
+      # Mount host directory for thumbnail persistence
+      - "${YOUTUBE_HUB_THUMBNAIL_DATA_PATH}:/app/thumbnails"
 
 networks:
   youtube-hub-network:

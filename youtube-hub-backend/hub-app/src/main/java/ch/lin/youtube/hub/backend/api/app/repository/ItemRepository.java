@@ -27,6 +27,8 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
@@ -37,6 +39,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import ch.lin.youtube.hub.backend.api.domain.model.Item;
 import ch.lin.youtube.hub.backend.api.domain.model.Tag;
+import ch.lin.youtube.hub.backend.api.domain.model.ThumbnailStatus;
 
 /**
  * Spring Data JPA repository for {@link Item} entities.
@@ -143,4 +146,65 @@ public interface ItemRepository extends JpaRepository<Item, Long>, JpaSpecificat
      * @return A list of matching items.
      */
     List<Item> findAllByVideoPublishedAtAfterAndPlaylistChannelChannelIdIn(OffsetDateTime publishedAfter, List<String> channelIds);
+
+    /**
+     * Finds pending thumbnails and sorts them by attempted time with nulls
+     * first.
+     *
+     * @param statuses A list of {@link ThumbnailStatus} to filter by.
+     * @param pageable The pagination information.
+     * @return A page of matching {@link Item} entities.
+     */
+    @Query("SELECT i FROM Item i WHERE i.thumbnailStatus IN :statuses ORDER BY i.thumbnailAttemptedAt ASC NULLS FIRST")
+    Page<Item> findPendingThumbnailsWithNullsFirst(@Param("statuses") List<ThumbnailStatus> statuses, Pageable pageable);
+
+    /**
+     * Projection interface for mapping aggregated thumbnail statistics.
+     */
+    interface ThumbnailCountsProjection {
+
+        Long getTotalCount();
+
+        Long getPendingCount();
+
+        Long getFailedCount();
+    }
+
+    /**
+     * Calculates total, pending, and failed thumbnail counts in a single query
+     * using conditional aggregation to minimize database round-trips.
+     *
+     * @param pendingStatuses The statuses considered as pending.
+     * @param failedStatus The status considered as permanently failed.
+     * @return A projection containing the aggregated counts.
+     */
+    @Query("SELECT COUNT(i) as totalCount, "
+            + "COALESCE(SUM(CASE WHEN i.thumbnailStatus IN :pendingStatuses THEN 1L ELSE 0L END), 0L) as pendingCount, "
+            + "COALESCE(SUM(CASE WHEN i.thumbnailStatus = :failedStatus THEN 1L ELSE 0L END), 0L) as failedCount "
+            + "FROM Item i")
+    ThumbnailCountsProjection getThumbnailCounts(@Param("pendingStatuses") List<ThumbnailStatus> pendingStatuses,
+            @Param("failedStatus") ThumbnailStatus failedStatus);
+
+    /**
+     * Resets all UNAVAILABLE thumbnails back to PENDING.
+     *
+     * @param pending The target pending status.
+     * @param unavailable The current unavailable status.
+     * @return The number of items updated.
+     */
+    @Modifying
+    @Query("UPDATE Item i SET i.thumbnailStatus = :pending, i.thumbnailRetryCount = 0, i.thumbnailAttemptedAt = null WHERE i.thumbnailStatus = :unavailable")
+    int resetAllUnavailableThumbnails(@Param("pending") ThumbnailStatus pending, @Param("unavailable") ThumbnailStatus unavailable);
+
+    /**
+     * Resets specific UNAVAILABLE thumbnails back to PENDING.
+     *
+     * @param videoIds The list of video IDs to reset.
+     * @param pending The target pending status.
+     * @param unavailable The current unavailable status.
+     * @return The number of items updated.
+     */
+    @Modifying
+    @Query("UPDATE Item i SET i.thumbnailStatus = :pending, i.thumbnailRetryCount = 0, i.thumbnailAttemptedAt = null WHERE i.thumbnailStatus = :unavailable AND i.videoId IN :videoIds")
+    int resetUnavailableThumbnailsByVideoIds(@Param("videoIds") List<String> videoIds, @Param("pending") ThumbnailStatus pending, @Param("unavailable") ThumbnailStatus unavailable);
 }

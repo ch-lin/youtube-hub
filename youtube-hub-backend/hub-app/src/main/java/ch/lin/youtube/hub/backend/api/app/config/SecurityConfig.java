@@ -49,6 +49,9 @@ public class SecurityConfig {
     @Value("${app.security.swagger-public:false}")
     private boolean isSwaggerPublic;
 
+    @Value("${youtube.hub.thumbnail.path-pattern:/thumbnails/**}")
+    private String thumbnailPathPattern;
+
     /**
      * Configures the main security filter chain, which is active by default or
      * when {@code app.security.enabled} is {@code true}. This chain secures all
@@ -61,6 +64,7 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests(authorize -> {
                     authorize.requestMatchers("/health").permitAll();
+                    authorize.requestMatchers(thumbnailPathPattern).permitAll();
                     if (isSwaggerPublic) {
                         authorize.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll();
                     } else {

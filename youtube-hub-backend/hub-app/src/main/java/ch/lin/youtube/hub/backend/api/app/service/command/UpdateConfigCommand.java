@@ -114,4 +114,9 @@ public class UpdateConfigCommand {
      * statistics synchronization.
      */
     Optional<Integer> activeVideosSyncDays;
+
+    /**
+     * An optional new maximum number of retries for downloading thumbnails.
+     */
+    Optional<Integer> maxThumbnailRetries;
 }

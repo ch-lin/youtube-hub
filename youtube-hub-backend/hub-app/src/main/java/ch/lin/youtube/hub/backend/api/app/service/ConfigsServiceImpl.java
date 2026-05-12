@@ -151,6 +151,8 @@ public class ConfigsServiceImpl implements ConfigsService {
         newConfig.setQuotaSafetyThreshold(command.getQuotaSafetyThreshold());
         newConfig.setApiCallDelay(command.getApiCallDelay());
         newConfig.setActiveVideosSyncDays(command.getActiveVideosSyncDays());
+        validateMaxThumbnailRetries(command.getMaxThumbnailRetries());
+        newConfig.setMaxThumbnailRetries(command.getMaxThumbnailRetries());
 
         return hubConfigRepository.save(newConfig);
     }
@@ -258,6 +260,8 @@ public class ConfigsServiceImpl implements ConfigsService {
         command.getQuotaSafetyThreshold().ifPresent(config::setQuotaSafetyThreshold);
         command.getApiCallDelay().ifPresent(config::setApiCallDelay);
         command.getActiveVideosSyncDays().ifPresent(config::setActiveVideosSyncDays);
+        command.getMaxThumbnailRetries().ifPresent(this::validateMaxThumbnailRetries);
+        command.getMaxThumbnailRetries().ifPresent(config::setMaxThumbnailRetries);
 
         HubConfig savedConfig = hubConfigRepository.save(config);
 
@@ -345,6 +349,9 @@ public class ConfigsServiceImpl implements ConfigsService {
             if (dbConfig.getActiveVideosSyncDays() == null) {
                 dbConfig.setActiveVideosSyncDays(defaultConfig.getActiveVideosSyncDays());
             }
+            if (dbConfig.getMaxThumbnailRetries() == null) {
+                dbConfig.setMaxThumbnailRetries(defaultConfig.getMaxThumbnailRetries());
+            }
             return dbConfig;
         }).orElseGet(this::findOrCreateDefaultConfig);
     }
@@ -420,6 +427,18 @@ public class ConfigsServiceImpl implements ConfigsService {
     private void validateQuotaThreshold(Long threshold) {
         if (threshold != null && threshold < 0) {
             throw new InvalidRequestException("Quota safety threshold cannot be negative.");
+        }
+    }
+
+    /**
+     * Validates that the max thumbnail retries is within a reasonable range
+     * (e.g., 0 to 10).
+     *
+     * @param maxRetries The max retries to validate.
+     */
+    private void validateMaxThumbnailRetries(Integer maxRetries) {
+        if (maxRetries != null && (maxRetries < 0 || maxRetries > 10)) {
+            throw new InvalidRequestException("Max thumbnail retries must be between 0 and 10.");
         }
     }
 
