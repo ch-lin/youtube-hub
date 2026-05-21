@@ -244,9 +244,8 @@ class AutoFetchSchedulerServiceImplTest {
 
     @Test
     void executeFetchJob_ShouldCallYoutubeHubService() {
-        HubConfig config = new HubConfig();
+        HubConfig config = new HubConfig("config-name");
         config.setYoutubeApiKey("api-key");
-        config.setName("config-name");
         when(configsService.getResolvedConfig(null)).thenReturn(config);
 
         service.executeFetchJob();

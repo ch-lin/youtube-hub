@@ -27,6 +27,8 @@ import java.time.OffsetDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
+import ch.lin.platform.domain.model.AuditableEntity;
+import ch.lin.platform.domain.model.BaseEntity;
 import static ch.lin.youtube.hub.backend.api.domain.model.Playlist.PLAYLIST_ID_COLUMN;
 import static ch.lin.youtube.hub.backend.api.domain.model.Playlist.PLAYLIST_ID_INDEX;
 import static ch.lin.youtube.hub.backend.api.domain.model.Playlist.TABLE_NAME;
@@ -42,31 +44,38 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import jakarta.validation.constraints.NotNull;
+import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 
 /**
  * Represents a YouTube playlist as a JPA entity.
  */
+@Entity
 @Table(name = TABLE_NAME, indexes = {
-    @Index(name = BaseEntity.ID_INDEX, columnList = BaseEntity.ID_COLUMN),
+    @Index(name = Playlist.ID_INDEX, columnList = BaseEntity.ID_COLUMN),
     @Index(name = PLAYLIST_ID_INDEX, columnList = PLAYLIST_ID_COLUMN)}, uniqueConstraints = {
     @UniqueConstraint(columnNames = PLAYLIST_ID_COLUMN)})
-@Entity
 @Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
 @EqualsAndHashCode(of = {"playlistId"}, callSuper = false)
-public class Playlist extends BaseEntity {
+@SuperBuilder(toBuilder = true)
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+public class Playlist extends AuditableEntity {
 
     /**
      * The name of the playlist table in the database.
      */
     public static final String TABLE_NAME = "playlist";
+
+    /**
+     * The name of the index for the ID column.
+     */
+    public static final String ID_INDEX = "playlist_id_index";
 
     /**
      * The name of the index for the playlist ID column.
@@ -117,6 +126,7 @@ public class Playlist extends BaseEntity {
      */
     @NotNull
     @Column(name = Playlist.TITLE_COLUMN, nullable = false)
+    @Setter
     private String title;
 
     /**
@@ -124,6 +134,7 @@ public class Playlist extends BaseEntity {
      * be null if it has never been processed.
      */
     @Column(name = Playlist.PROCESSED_AT, columnDefinition = "TIMESTAMP")
+    @Setter
     private OffsetDateTime processedAt;
 
     /**
@@ -131,6 +142,7 @@ public class Playlist extends BaseEntity {
      * for resuming interrupted jobs.
      */
     @Column(name = Playlist.LAST_PAGE_TOKEN_COLUMN)
+    @Setter
     private String lastPageToken;
 
     /**
@@ -140,6 +152,7 @@ public class Playlist extends BaseEntity {
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = Playlist.CHANNEL_COLUMN, referencedColumnName = Channel.ID_COLUMN, nullable = false, updatable = false, foreignKey = @ForeignKey(name = FK_PLAYLIST_CHANNEL))
+    @Setter
     private Channel channel;
 
     /**
@@ -147,8 +160,20 @@ public class Playlist extends BaseEntity {
      * one-to-many relationship managed by the {@code Item} entity. Changes are
      * cascaded, and orphaned items are removed automatically.
      */
-    @OneToMany(fetch = FetchType.LAZY, mappedBy = Item.PLAYLIST_COLUMN, cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<Item> items;
+    @OneToMany(mappedBy = "playlist", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    @Setter
+    @lombok.Builder.Default
+    private Set<Item> items = new java.util.HashSet<>();
+
+    /**
+     * Creates a new Playlist with the specified playlist ID.
+     *
+     * @param playlistId The unique YouTube playlist ID.
+     */
+    public Playlist(String playlistId) {
+        this();
+        this.playlistId = playlistId;
+    }
 
     /**
      * Adds an item to this playlist.

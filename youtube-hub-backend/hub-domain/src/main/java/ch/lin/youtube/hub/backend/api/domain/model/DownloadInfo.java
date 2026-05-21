@@ -23,6 +23,10 @@
  *===========================================================================*/
 package ch.lin.youtube.hub.backend.api.domain.model;
 
+import org.hibernate.annotations.ColumnDefault;
+
+import ch.lin.platform.domain.model.AuditableEntity;
+import ch.lin.platform.domain.model.BaseEntity;
 import static ch.lin.youtube.hub.backend.api.domain.model.DownloadInfo.TABLE_NAME;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -33,26 +37,28 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
+import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 
 /**
  * Represents download information for a video item, stored as a JPA entity.
  */
-@Table(name = TABLE_NAME, indexes = {
-    @Index(name = BaseEntity.ID_INDEX, columnList = BaseEntity.ID_COLUMN),
-    @Index(name = DownloadInfo.DOWNLOAD_TASK_ID_COLUMN, columnList = DownloadInfo.DOWNLOAD_TASK_ID_COLUMN)
-})
 @Entity
+@Table(name = TABLE_NAME, indexes = {
+    @Index(name = DownloadInfo.ID_INDEX, columnList = BaseEntity.ID_COLUMN),
+    @Index(name = DownloadInfo.DOWNLOAD_TASK_ID_INDEX, columnList = DownloadInfo.DOWNLOAD_TASK_ID_COLUMN)
+})
 @Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
 @EqualsAndHashCode(of = {"downloadTaskId", "fileSize", "filePath"}, callSuper = false)
-public class DownloadInfo extends BaseEntity {
+@SuperBuilder(toBuilder = true)
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+public class DownloadInfo extends AuditableEntity {
 
     /**
      * The name of the download info table in the database.
@@ -60,9 +66,19 @@ public class DownloadInfo extends BaseEntity {
     public static final String TABLE_NAME = "download_info";
 
     /**
+     * The name of the index for the ID column.
+     */
+    public static final String ID_INDEX = "download_info_id_index";
+
+    /**
      * The name of the download task ID column in the database.
      */
     public static final String DOWNLOAD_TASK_ID_COLUMN = "download_task_id";
+
+    /**
+     * The name of the index for the download task ID column.
+     */
+    public static final String DOWNLOAD_TASK_ID_INDEX = "download_info_task_id_index";
 
     /**
      * The name of the file size column in the database.
@@ -90,18 +106,22 @@ public class DownloadInfo extends BaseEntity {
      * an integrated task manager.
      */
     @Column(name = DOWNLOAD_TASK_ID_COLUMN)
+    @Setter
     private String downloadTaskId;
 
     /**
      * The size of the downloaded video file in bytes.
      */
-    @Column(name = FILE_SIZE_COLUMN)
+    @ColumnDefault("0")
+    @Column(name = FILE_SIZE_COLUMN, nullable = false)
+    @Setter
     private long fileSize;
 
     /**
      * The local path where the downloaded video file is stored.
      */
     @Column(name = FILE_PATH_COLUMN)
+    @Setter
     private String filePath;
 
     /**
@@ -113,4 +133,14 @@ public class DownloadInfo extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = ITEM_COLUMN, referencedColumnName = Item.ID_COLUMN, nullable = false, updatable = false, foreignKey = @ForeignKey(name = FK_DOWNLOAD_INFO_ITEM))
     private Item item;
+
+    /**
+     * Creates a new DownloadInfo linked to a specific Item.
+     *
+     * @param item The associated Item entity.
+     */
+    public DownloadInfo(Item item) {
+        this();
+        this.item = item;
+    }
 }

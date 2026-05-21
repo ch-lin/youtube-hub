@@ -77,8 +77,7 @@ class ConfigsServiceImplTest {
     @SuppressWarnings("null")
     void getAllConfigs_ShouldCreateDefault_WhenDbIsEmpty() {
         when(hubConfigRepository.count()).thenReturn(0L);
-        HubConfig defaultConfig = new HubConfig();
-        defaultConfig.setName("default");
+        HubConfig defaultConfig = new HubConfig("default");
 
         // Mocking findOrCreateDefaultConfig internals
         when(hubConfigRepository.findByName("default")).thenReturn(Optional.empty());
@@ -100,8 +99,7 @@ class ConfigsServiceImplTest {
     @Test
     void getAllConfigs_ShouldNotCreateDefault_WhenDbIsNotEmpty() {
         when(hubConfigRepository.count()).thenReturn(1L);
-        HubConfig existingConfig = new HubConfig();
-        existingConfig.setName("existing");
+        HubConfig existingConfig = new HubConfig("existing");
         existingConfig.setEnabled(true);
 
         when(hubConfigRepository.findAll()).thenReturn(List.of(existingConfig));
@@ -295,12 +293,11 @@ class ConfigsServiceImplTest {
         when(command.getActiveVideosSyncDays()).thenReturn(Optional.empty());
         when(command.getMaxThumbnailRetries()).thenReturn(Optional.empty());
 
-        HubConfig existing = new HubConfig();
-        existing.setName("existing");
+        HubConfig existing = new HubConfig("existing");
         when(hubConfigRepository.findByName("existing")).thenReturn(Optional.of(existing));
         when(hubConfigRepository.save(any())).thenAnswer(i -> i.getArgument(0));
         // Return non-empty list to avoid default config logic
-        when(hubConfigRepository.findAllByEnabledTrue()).thenReturn(List.of(new HubConfig()));
+        when(hubConfigRepository.findAllByEnabledTrue()).thenReturn(List.of(new HubConfig("other")));
 
         HubConfig updated = configsService.saveConfig(command);
 
@@ -338,8 +335,7 @@ class ConfigsServiceImplTest {
         when(command.getAutoStartFetchScheduler()).thenReturn(true);
         when(command.getSchedulerType()).thenReturn(SchedulerType.FIXED_RATE);
 
-        HubConfig existingEnabled = new HubConfig();
-        existingEnabled.setName("old-config");
+        HubConfig existingEnabled = new HubConfig("old-config");
         existingEnabled.setEnabled(true);
 
         when(hubConfigRepository.findByName("new-config")).thenReturn(Optional.empty());
@@ -397,14 +393,12 @@ class ConfigsServiceImplTest {
     @Test
     void deleteConfig_ShouldEnableDefault_WhenNoOtherEnabled() {
         String configName = "custom";
-        HubConfig config = new HubConfig();
-        config.setName(configName);
+        HubConfig config = new HubConfig(configName);
 
         when(hubConfigRepository.findByName(configName)).thenReturn(Optional.of(config));
         when(hubConfigRepository.findAllByEnabledTrue()).thenReturn(Collections.emptyList());
 
-        HubConfig defaultConfig = new HubConfig();
-        defaultConfig.setName("default");
+        HubConfig defaultConfig = new HubConfig("default");
         defaultConfig.setEnabled(false);
         when(hubConfigRepository.findByName("default")).thenReturn(Optional.of(defaultConfig));
 
@@ -418,8 +412,7 @@ class ConfigsServiceImplTest {
     @Test
     void deleteConfig_ShouldNotEnableDefault_WhenOtherConfigIsEnabled() {
         String configName = "custom";
-        HubConfig config = new HubConfig();
-        config.setName(configName);
+        HubConfig config = new HubConfig(configName);
 
         when(hubConfigRepository.findByName(configName)).thenReturn(Optional.of(config));
         when(hubConfigRepository.findAllByEnabledTrue()).thenReturn(List.of(new HubConfig()));
@@ -433,14 +426,12 @@ class ConfigsServiceImplTest {
     @Test
     void deleteConfig_ShouldNotUpdateDefault_WhenDefaultIsAlreadyEnabled() {
         String configName = "custom";
-        HubConfig config = new HubConfig();
-        config.setName(configName);
+        HubConfig config = new HubConfig(configName);
 
         when(hubConfigRepository.findByName(configName)).thenReturn(Optional.of(config));
         when(hubConfigRepository.findAllByEnabledTrue()).thenReturn(Collections.emptyList());
 
-        HubConfig defaultConfig = new HubConfig();
-        defaultConfig.setName("default");
+        HubConfig defaultConfig = new HubConfig("default");
         defaultConfig.setEnabled(true);
         when(hubConfigRepository.findByName("default")).thenReturn(Optional.of(defaultConfig));
 
@@ -471,8 +462,7 @@ class ConfigsServiceImplTest {
         when(command.getActiveVideosSyncDays()).thenReturn(Optional.empty());
         when(command.getMaxThumbnailRetries()).thenReturn(Optional.of(8));
 
-        HubConfig existingConfig = new HubConfig();
-        existingConfig.setName(configName);
+        HubConfig existingConfig = new HubConfig(configName);
         existingConfig.setEnabled(false);
         existingConfig.setYoutubeApiKey("old-key");
         existingConfig.setQuota(10000L);
@@ -500,8 +490,7 @@ class ConfigsServiceImplTest {
         when(hubConfigRepository.findFirstByEnabledTrue()).thenReturn(Optional.empty());
         when(hubConfigRepository.count()).thenReturn(0L);
 
-        HubConfig defaultConfig = new HubConfig();
-        defaultConfig.setName("default");
+        HubConfig defaultConfig = new HubConfig("default");
 
         // Mock findOrCreateDefaultConfig
         when(hubConfigRepository.findByName("default")).thenReturn(Optional.empty());
@@ -515,8 +504,7 @@ class ConfigsServiceImplTest {
 
     @Test
     void getResolvedConfig_ShouldPopulateDefaults_WhenFieldsAreMissing() {
-        HubConfig dbConfig = new HubConfig();
-        dbConfig.setName("custom");
+        HubConfig dbConfig = new HubConfig("custom");
         dbConfig.setEnabled(null);
         dbConfig.setFixedRate(null);
         dbConfig.setAutoStartFetchScheduler(null);
@@ -568,8 +556,7 @@ class ConfigsServiceImplTest {
     @Test
     void getConfig_ShouldReturnConfig_WhenFound() {
         String configName = "existing";
-        HubConfig config = new HubConfig();
-        config.setName(configName);
+        HubConfig config = new HubConfig(configName);
         when(hubConfigRepository.findByName(configName)).thenReturn(Optional.of(config));
 
         HubConfig result = configsService.getConfig(configName);
@@ -581,8 +568,7 @@ class ConfigsServiceImplTest {
     @Test
     void getConfig_ShouldReturnDefault_WhenNameIsDefaultAndNotFound() {
         String configName = "default";
-        HubConfig defaultConfig = new HubConfig();
-        defaultConfig.setName("default");
+        HubConfig defaultConfig = new HubConfig("default");
 
         when(hubConfigRepository.findByName(configName)).thenReturn(Optional.empty());
         when(defaultConfigFactory.create(defaultProperties)).thenReturn(defaultConfig);
@@ -630,8 +616,7 @@ class ConfigsServiceImplTest {
         when(hubConfigRepository.findByName(configName)).thenReturn(Optional.empty());
         when(hubConfigRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
-        HubConfig existingEnabledConfig = new HubConfig();
-        existingEnabledConfig.setName("existing-enabled");
+        HubConfig existingEnabledConfig = new HubConfig("existing-enabled");
         when(hubConfigRepository.findAllByEnabledTrue()).thenReturn(List.of(existingEnabledConfig));
 
         HubConfig saved = configsService.saveConfig(command);
@@ -663,12 +648,10 @@ class ConfigsServiceImplTest {
         when(command.getActiveVideosSyncDays()).thenReturn(Optional.empty());
         when(command.getMaxThumbnailRetries()).thenReturn(Optional.empty());
 
-        HubConfig otherConfig = new HubConfig();
-        otherConfig.setName("other");
+        HubConfig otherConfig = new HubConfig("other");
         otherConfig.setEnabled(true);
 
-        HubConfig currentConfig = new HubConfig();
-        currentConfig.setName("current");
+        HubConfig currentConfig = new HubConfig("current");
         currentConfig.setEnabled(true);
 
         when(hubConfigRepository.findAllByEnabledTrue()).thenReturn(List.of(otherConfig, currentConfig));
@@ -700,16 +683,14 @@ class ConfigsServiceImplTest {
         when(command.getActiveVideosSyncDays()).thenReturn(Optional.empty());
         when(command.getMaxThumbnailRetries()).thenReturn(Optional.empty());
 
-        HubConfig currentConfig = new HubConfig();
-        currentConfig.setName(configName);
+        HubConfig currentConfig = new HubConfig(configName);
         currentConfig.setEnabled(true);
 
         when(hubConfigRepository.findByName(configName)).thenReturn(Optional.of(currentConfig));
         when(hubConfigRepository.save(currentConfig)).thenReturn(currentConfig);
         when(hubConfigRepository.findAllByEnabledTrue()).thenReturn(Collections.emptyList());
 
-        HubConfig defaultConfig = new HubConfig();
-        defaultConfig.setName("default");
+        HubConfig defaultConfig = new HubConfig("default");
         when(hubConfigRepository.findByName("default")).thenReturn(Optional.of(defaultConfig));
         when(hubConfigRepository.save(defaultConfig)).thenReturn(defaultConfig);
 
@@ -724,8 +705,7 @@ class ConfigsServiceImplTest {
         when(hubConfigRepository.findFirstByEnabledTrue()).thenReturn(Optional.empty());
         when(hubConfigRepository.count()).thenReturn(1L);
 
-        HubConfig defaultConfig = new HubConfig();
-        defaultConfig.setName("default");
+        HubConfig defaultConfig = new HubConfig("default");
         when(hubConfigRepository.findByName("default")).thenReturn(Optional.of(defaultConfig));
 
         configsService.getResolvedConfig(null);
@@ -736,8 +716,7 @@ class ConfigsServiceImplTest {
 
     @Test
     void getResolvedConfig_ShouldNotOverwriteExistingValues() {
-        HubConfig dbConfig = new HubConfig();
-        dbConfig.setName("custom");
+        HubConfig dbConfig = new HubConfig("custom");
         dbConfig.setEnabled(false);
         dbConfig.setYoutubeApiKey("existing-key");
         dbConfig.setClientId("existing-client");

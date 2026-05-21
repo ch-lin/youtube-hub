@@ -73,8 +73,7 @@ class ChannelServiceImplTest {
 
     @Test
     void getAllChannels_ShouldReturnAllChannels() {
-        Channel channel = new Channel();
-        channel.setChannelId("123");
+        Channel channel = new Channel("123");
         when(channelRepository.findAll()).thenReturn(List.of(channel));
 
         List<Channel> result = channelService.getAllChannels();
@@ -85,8 +84,7 @@ class ChannelServiceImplTest {
 
     @Test
     void saveChannel_ShouldSave_WhenValid() {
-        Channel channel = new Channel();
-        channel.setChannelId("123");
+        Channel channel = new Channel("123");
         channel.setTitle("Test Channel");
         channel.setHandle("@test");
 
@@ -101,13 +99,11 @@ class ChannelServiceImplTest {
 
     @Test
     void saveChannel_ShouldUpdate_WhenExists() {
-        Channel existing = new Channel();
-        existing.setChannelId("123");
+        Channel existing = new Channel("123");
         existing.setTitle("Old Title");
         existing.setHandle("@old");
 
-        Channel update = new Channel();
-        update.setChannelId("123");
+        Channel update = new Channel("123");
         update.setTitle("New Title");
         update.setHandle("@new");
 
@@ -128,45 +124,40 @@ class ChannelServiceImplTest {
                 .isInstanceOf(InvalidRequestException.class);
 
         // 2. Channel ID is null
-        Channel c1 = new Channel();
+        Channel c1 = new Channel(null);
         c1.setTitle("Title");
         c1.setHandle("@handle");
         assertThatThrownBy(() -> channelService.saveChannel(c1))
                 .isInstanceOf(InvalidRequestException.class);
 
         // 3. Channel ID is blank
-        Channel c2 = new Channel();
-        c2.setChannelId("   ");
+        Channel c2 = new Channel("   ");
         c2.setTitle("Title");
         c2.setHandle("@handle");
         assertThatThrownBy(() -> channelService.saveChannel(c2))
                 .isInstanceOf(InvalidRequestException.class);
 
         // 4. Title is null
-        Channel c3 = new Channel();
-        c3.setChannelId("id");
+        Channel c3 = new Channel("id");
         c3.setHandle("@handle");
         assertThatThrownBy(() -> channelService.saveChannel(c3))
                 .isInstanceOf(InvalidRequestException.class);
 
         // 5. Title is blank
-        Channel c4 = new Channel();
-        c4.setChannelId("id");
+        Channel c4 = new Channel("id");
         c4.setTitle("");
         c4.setHandle("@handle");
         assertThatThrownBy(() -> channelService.saveChannel(c4))
                 .isInstanceOf(InvalidRequestException.class);
 
         // 6. Handle is null
-        Channel c5 = new Channel();
-        c5.setChannelId("id");
+        Channel c5 = new Channel("id");
         c5.setTitle("Title");
         assertThatThrownBy(() -> channelService.saveChannel(c5))
                 .isInstanceOf(InvalidRequestException.class);
 
         // 7. Handle is blank
-        Channel c6 = new Channel();
-        c6.setChannelId("id");
+        Channel c6 = new Channel("id");
         c6.setTitle("Title");
         c6.setHandle("  ");
         assertThatThrownBy(() -> channelService.saveChannel(c6))
@@ -175,8 +166,7 @@ class ChannelServiceImplTest {
 
     @Test
     void deleteChannel_ShouldDelete_WhenFound() {
-        Channel channel = new Channel();
-        channel.setChannelId("123");
+        Channel channel = new Channel("123");
         when(channelRepository.findByChannelId("123")).thenReturn(Optional.of(channel));
 
         channelService.deleteChannel("123");
@@ -233,8 +223,7 @@ class ChannelServiceImplTest {
     @SuppressWarnings("null")
     @Test
     void addChannelsByUrl_ShouldThrow_WhenConfigNameMismatch() {
-        HubConfig resolvedConfig = new HubConfig();
-        resolvedConfig.setName("default");
+        HubConfig resolvedConfig = new HubConfig("default");
         when(configsService.getResolvedConfig("custom")).thenReturn(resolvedConfig);
 
         List<String> urls = List.of("http://url");
@@ -343,8 +332,7 @@ class ChannelServiceImplTest {
 
     @Test
     void getChannelDetailsFromApi_ShouldThrow_WhenConfigNameMismatch() {
-        HubConfig resolvedConfig = new HubConfig();
-        resolvedConfig.setName("default");
+        HubConfig resolvedConfig = new HubConfig("default");
         when(configsService.getResolvedConfig("custom")).thenReturn(resolvedConfig);
 
         assertThatThrownBy(() -> channelService.getChannelDetailsFromApi("id", null, "custom"))
@@ -366,8 +354,7 @@ class ChannelServiceImplTest {
     @SuppressWarnings("null")
     @Test
     void addChannelsByUrl_ShouldUseConfig_WhenApiKeyBlank() {
-        HubConfig config = new HubConfig();
-        config.setName("default");
+        HubConfig config = new HubConfig("default");
         config.setYoutubeApiKey("config-key");
         when(configsService.getResolvedConfig(null)).thenReturn(config);
 
@@ -543,8 +530,7 @@ class ChannelServiceImplTest {
 
     @Test
     void getChannelDetailsFromApi_ShouldUseDefaultConfig_WhenConfigNameNull() {
-        HubConfig config = new HubConfig();
-        config.setName("default");
+        HubConfig config = new HubConfig("default");
         config.setYoutubeApiKey("config-key");
         when(configsService.getResolvedConfig(null)).thenReturn(config);
 
@@ -620,8 +606,7 @@ class ChannelServiceImplTest {
     @SuppressWarnings("null")
     @Test
     void addChannelsByUrl_ShouldUseDefaultConfig_WhenConfigNameIsEmpty() {
-        HubConfig config = new HubConfig();
-        config.setName("default");
+        HubConfig config = new HubConfig("default");
         config.setYoutubeApiKey("config-key");
         when(configsService.getResolvedConfig(null)).thenReturn(config);
 
@@ -669,8 +654,7 @@ class ChannelServiceImplTest {
     @SuppressWarnings("null")
     @Test
     void addChannelsByUrl_ShouldSucceed_WhenConfigNameMatches() {
-        HubConfig config = new HubConfig();
-        config.setName("custom");
+        HubConfig config = new HubConfig("custom");
         config.setYoutubeApiKey("config-key");
         when(configsService.getResolvedConfig("custom")).thenReturn(config);
 
@@ -707,8 +691,7 @@ class ChannelServiceImplTest {
 
     @Test
     void getChannelDetailsFromApi_ShouldUseDefaultConfig_WhenConfigNameIsEmpty() {
-        HubConfig config = new HubConfig();
-        config.setName("default");
+        HubConfig config = new HubConfig("default");
         config.setYoutubeApiKey("config-key");
         when(configsService.getResolvedConfig(null)).thenReturn(config);
 
@@ -728,8 +711,7 @@ class ChannelServiceImplTest {
 
     @Test
     void getChannelDetailsFromApi_ShouldSucceed_WhenConfigNameMatches() {
-        HubConfig config = new HubConfig();
-        config.setName("custom");
+        HubConfig config = new HubConfig("custom");
         config.setYoutubeApiKey("config-key");
         when(configsService.getResolvedConfig("custom")).thenReturn(config);
 
@@ -848,8 +830,7 @@ class ChannelServiceImplTest {
 
     @Test
     void getChannelDetailsFromApi_ShouldUseConfig_WhenApiKeyBlank() {
-        HubConfig config = new HubConfig();
-        config.setName("default");
+        HubConfig config = new HubConfig("default");
         config.setYoutubeApiKey("config-key");
         when(configsService.getResolvedConfig(null)).thenReturn(config);
 

@@ -93,7 +93,7 @@ class PageProcessingServiceImplTest {
 
     @Test
     void processSinglePage_ShouldThrow_WhenQuotaExceeded() {
-        when(playlistRepository.findByPlaylistId("PL123")).thenReturn(Optional.of(new Playlist()));
+        when(playlistRepository.findByPlaylistId("PL123")).thenReturn(Optional.of(new Playlist("PL123")));
         when(youtubeApiUsageService.hasSufficientQuota(anyLong(), anyLong())).thenReturn(false);
 
         assertThatThrownBy(() -> service.processSinglePage("PL123", null, httpClient, "key", null, 0, 100, 10))
@@ -102,7 +102,7 @@ class PageProcessingServiceImplTest {
 
     @Test
     void processSinglePage_ShouldReturnEmpty_WhenNoItemsInResponse() throws Exception {
-        Playlist playlist = new Playlist();
+        Playlist playlist = new Playlist("PL123");
         when(playlistRepository.findByPlaylistId("PL123")).thenReturn(Optional.of(playlist));
         when(youtubeApiUsageService.hasSufficientQuota(anyLong(), anyLong())).thenReturn(true);
 
@@ -120,7 +120,7 @@ class PageProcessingServiceImplTest {
     @Test
     @SuppressWarnings("null")
     void processSinglePage_ShouldProcessNewItems() throws Exception {
-        Playlist playlist = new Playlist();
+        Playlist playlist = new Playlist("PL123");
         when(playlistRepository.findByPlaylistId("PL123")).thenReturn(Optional.of(playlist));
         when(youtubeApiUsageService.hasSufficientQuota(anyLong(), anyLong())).thenReturn(true);
 
@@ -141,8 +141,7 @@ class PageProcessingServiceImplTest {
         when(httpClient.get(any(), anyMap(), any())).thenReturn(new HttpClient.Response(200, responseBody));
         when(itemRepository.findByVideoId("v1")).thenReturn(Optional.empty());
 
-        Item newItem = new Item();
-        newItem.setVideoId("v1");
+        Item newItem = new Item("v1");
         newItem.setLiveBroadcastContent(LiveBroadcastContent.NONE);
         when(videoFetchService.fetchAndCreateItemsFromVideoIds(any(), any(), anyMap(), anyLong(), anyLong(), anyLong()))
                 .thenReturn(List.of(newItem));
@@ -160,7 +159,7 @@ class PageProcessingServiceImplTest {
     @Test
     @SuppressWarnings("null")
     void processSinglePage_ShouldUpdateExistingItems() throws Exception {
-        Playlist playlist = new Playlist();
+        Playlist playlist = new Playlist("PL123");
         when(playlistRepository.findByPlaylistId("PL123")).thenReturn(Optional.of(playlist));
         when(youtubeApiUsageService.hasSufficientQuota(anyLong(), anyLong())).thenReturn(true);
 
@@ -179,8 +178,7 @@ class PageProcessingServiceImplTest {
             """.formatted(publishedAt);
         when(httpClient.get(any(), anyMap(), any())).thenReturn(new HttpClient.Response(200, responseBody));
 
-        Item existingItem = new Item();
-        existingItem.setVideoId("v1");
+        Item existingItem = new Item("v1");
         when(itemRepository.findByVideoId("v1")).thenReturn(Optional.of(existingItem));
         when(videoFetchService.updateExistingItems(any(), any(), anyList(), anyLong(), anyLong(), anyLong()))
                 .thenReturn(1);
@@ -194,7 +192,7 @@ class PageProcessingServiceImplTest {
 
     @Test
     void processSinglePage_ShouldStopFetching_WhenPublishedAfterReached() throws Exception {
-        Playlist playlist = new Playlist();
+        Playlist playlist = new Playlist("PL123");
         when(playlistRepository.findByPlaylistId("PL123")).thenReturn(Optional.of(playlist));
         when(youtubeApiUsageService.hasSufficientQuota(anyLong(), anyLong())).thenReturn(true);
 
@@ -225,7 +223,7 @@ class PageProcessingServiceImplTest {
 
     @Test
     void processSinglePage_ShouldHandleApiAuthException() throws Exception {
-        when(playlistRepository.findByPlaylistId("PL123")).thenReturn(Optional.of(new Playlist()));
+        when(playlistRepository.findByPlaylistId("PL123")).thenReturn(Optional.of(new Playlist("PL123")));
         when(youtubeApiUsageService.hasSufficientQuota(anyLong(), anyLong())).thenReturn(true);
 
         when(httpClient.get(any(), anyMap(), any()))
@@ -237,7 +235,7 @@ class PageProcessingServiceImplTest {
 
     @Test
     void processSinglePage_ShouldHandleRequestException() throws Exception {
-        when(playlistRepository.findByPlaylistId("PL123")).thenReturn(Optional.of(new Playlist()));
+        when(playlistRepository.findByPlaylistId("PL123")).thenReturn(Optional.of(new Playlist("PL123")));
         when(youtubeApiUsageService.hasSufficientQuota(anyLong(), anyLong())).thenReturn(true);
 
         when(httpClient.get(any(), anyMap(), any()))
@@ -249,8 +247,7 @@ class PageProcessingServiceImplTest {
 
     @Test
     void updatePlaylistProcessedAt_ShouldUpdateAndSave() {
-        Playlist playlist = new Playlist();
-        playlist.setPlaylistId("PL123");
+        Playlist playlist = new Playlist("PL123");
         when(playlistRepository.findByPlaylistId("PL123")).thenReturn(Optional.of(playlist));
 
         OffsetDateTime now = OffsetDateTime.now();
@@ -263,7 +260,7 @@ class PageProcessingServiceImplTest {
 
     @Test
     void processSinglePage_ShouldSkipItemsWithBlankVideoId() throws Exception {
-        Playlist playlist = new Playlist();
+        Playlist playlist = new Playlist("PL123");
         when(playlistRepository.findByPlaylistId("PL123")).thenReturn(Optional.of(playlist));
         when(youtubeApiUsageService.hasSufficientQuota(anyLong(), anyLong())).thenReturn(true);
 
@@ -281,7 +278,7 @@ class PageProcessingServiceImplTest {
 
     @Test
     void processSinglePage_ShouldHandleInterruptedException() {
-        when(playlistRepository.findByPlaylistId("PL123")).thenReturn(Optional.of(new Playlist()));
+        when(playlistRepository.findByPlaylistId("PL123")).thenReturn(Optional.of(new Playlist("PL123")));
         when(youtubeApiUsageService.hasSufficientQuota(anyLong(), anyLong())).thenReturn(true);
 
         // Interrupt the current thread before calling the service to trigger InterruptedException in Thread.sleep()
@@ -297,7 +294,7 @@ class PageProcessingServiceImplTest {
     @Test
     @SuppressWarnings("unchecked")
     void processSinglePage_ShouldIncludePageToken_WhenProvided() throws Exception {
-        Playlist playlist = new Playlist();
+        Playlist playlist = new Playlist("PL123");
         when(playlistRepository.findByPlaylistId("PL123")).thenReturn(Optional.of(playlist));
         when(youtubeApiUsageService.hasSufficientQuota(anyLong(), anyLong())).thenReturn(true);
 
@@ -314,7 +311,7 @@ class PageProcessingServiceImplTest {
 
     @Test
     void processSinglePage_ShouldReturnStopFetching_WhenItemsNodeIsMissing() throws Exception {
-        Playlist playlist = new Playlist();
+        Playlist playlist = new Playlist("PL123");
         when(playlistRepository.findByPlaylistId("PL123")).thenReturn(Optional.of(playlist));
         when(youtubeApiUsageService.hasSufficientQuota(anyLong(), anyLong())).thenReturn(true);
 
@@ -328,7 +325,7 @@ class PageProcessingServiceImplTest {
 
     @Test
     void processSinglePage_ShouldReturnStopFetching_WhenItemsNodeIsNotArray() throws Exception {
-        Playlist playlist = new Playlist();
+        Playlist playlist = new Playlist("PL123");
         when(playlistRepository.findByPlaylistId("PL123")).thenReturn(Optional.of(playlist));
         when(youtubeApiUsageService.hasSufficientQuota(anyLong(), anyLong())).thenReturn(true);
 
@@ -342,7 +339,7 @@ class PageProcessingServiceImplTest {
 
     @Test
     void processSinglePage_ShouldHandleMultipleItems_AndCountTypes() throws Exception {
-        Playlist playlist = new Playlist();
+        Playlist playlist = new Playlist("PL123");
         when(playlistRepository.findByPlaylistId("PL123")).thenReturn(Optional.of(playlist));
         when(youtubeApiUsageService.hasSufficientQuota(anyLong(), anyLong())).thenReturn(true);
 
@@ -364,14 +361,11 @@ class PageProcessingServiceImplTest {
         when(httpClient.get(any(), anyMap(), any())).thenReturn(new HttpClient.Response(200, responseBody));
         when(itemRepository.findByVideoId(anyString())).thenReturn(Optional.empty());
 
-        Item item1 = new Item();
-        item1.setVideoId("v1");
+        Item item1 = new Item("v1");
         item1.setLiveBroadcastContent(LiveBroadcastContent.NONE);
-        Item item2 = new Item();
-        item2.setVideoId("v2");
+        Item item2 = new Item("v2");
         item2.setLiveBroadcastContent(LiveBroadcastContent.UPCOMING);
-        Item item3 = new Item();
-        item3.setVideoId("v3");
+        Item item3 = new Item("v3");
         item3.setLiveBroadcastContent(LiveBroadcastContent.LIVE);
 
         when(videoFetchService.fetchAndCreateItemsFromVideoIds(any(), any(), anyMap(), anyLong(), anyLong(), anyLong()))
@@ -388,7 +382,7 @@ class PageProcessingServiceImplTest {
 
     @Test
     void processSinglePage_ShouldNotStopFetching_WhenVideoIsNewerThanPublishedAfter() throws Exception {
-        Playlist playlist = new Playlist();
+        Playlist playlist = new Playlist("PL123");
         when(playlistRepository.findByPlaylistId("PL123")).thenReturn(Optional.of(playlist));
         when(youtubeApiUsageService.hasSufficientQuota(anyLong(), anyLong())).thenReturn(true);
 
@@ -407,7 +401,7 @@ class PageProcessingServiceImplTest {
 
     @Test
     void processSinglePage_ShouldThrowRequestException_WhenHttpExceptionNotAuth() throws Exception {
-        when(playlistRepository.findByPlaylistId("PL123")).thenReturn(Optional.of(new Playlist()));
+        when(playlistRepository.findByPlaylistId("PL123")).thenReturn(Optional.of(new Playlist("PL123")));
         when(youtubeApiUsageService.hasSufficientQuota(anyLong(), anyLong())).thenReturn(true);
 
         when(httpClient.get(any(), anyMap(), any()))
@@ -420,7 +414,7 @@ class PageProcessingServiceImplTest {
 
     @Test
     void processSinglePage_ShouldThrowRequestException_WhenHttpException400ButNotAuth() throws Exception {
-        when(playlistRepository.findByPlaylistId("PL123")).thenReturn(Optional.of(new Playlist()));
+        when(playlistRepository.findByPlaylistId("PL123")).thenReturn(Optional.of(new Playlist("PL123")));
         when(youtubeApiUsageService.hasSufficientQuota(anyLong(), anyLong())).thenReturn(true);
 
         when(httpClient.get(any(), anyMap(), any()))
@@ -433,7 +427,7 @@ class PageProcessingServiceImplTest {
 
     @Test
     void processSinglePage_ShouldThrowRequestException_WhenHttpException400WithNullMessage() throws Exception {
-        when(playlistRepository.findByPlaylistId("PL123")).thenReturn(Optional.of(new Playlist()));
+        when(playlistRepository.findByPlaylistId("PL123")).thenReturn(Optional.of(new Playlist("PL123")));
         when(youtubeApiUsageService.hasSufficientQuota(anyLong(), anyLong())).thenReturn(true);
 
         HttpException mockException = org.mockito.Mockito.mock(HttpException.class);
@@ -450,7 +444,7 @@ class PageProcessingServiceImplTest {
 
     @Test
     void processSinglePage_ShouldThrowRequestException_WhenURISyntaxException() throws Exception {
-        when(playlistRepository.findByPlaylistId("PL123")).thenReturn(Optional.of(new Playlist()));
+        when(playlistRepository.findByPlaylistId("PL123")).thenReturn(Optional.of(new Playlist("PL123")));
         when(youtubeApiUsageService.hasSufficientQuota(anyLong(), anyLong())).thenReturn(true);
 
         when(httpClient.get(any(), anyMap(), any()))
@@ -463,7 +457,7 @@ class PageProcessingServiceImplTest {
 
     @Test
     void processSinglePage_ShouldWait_WhenDelayIsPositive() throws Exception {
-        Playlist playlist = new Playlist();
+        Playlist playlist = new Playlist("PL123");
         when(playlistRepository.findByPlaylistId("PL123")).thenReturn(Optional.of(playlist));
         when(youtubeApiUsageService.hasSufficientQuota(anyLong(), anyLong())).thenReturn(true);
 

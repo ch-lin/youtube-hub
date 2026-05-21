@@ -1,3 +1,26 @@
+/*=============================================================================
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2025 Che-Hung Lin
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *===========================================================================*/
 package ch.lin.youtube.hub.backend.api.app.service;
 
 import java.io.IOException;
@@ -95,26 +118,29 @@ public class VideoFetchServiceImpl implements VideoFetchService {
                     continue;
                 }
 
-                Item newItem = new Item();
                 JsonNode videoSnippet = videoItemNode.path("snippet");
-                newItem.setVideoId(videoId);
-                newItem.setTitle(videoSnippet.path("title").asText());
-                newItem.setDescription(videoSnippet.path("description").asText(null));
-                newItem.setKind(videoItemNode.path("kind").asText());
-                newItem.setVideoPublishedAt(OffsetDateTime.parse(originalSnippet.path("publishedAt").asText()));
 
                 String liveBroadcastContentStr = videoSnippet.path("liveBroadcastContent").asText("NONE").toUpperCase();
-                newItem.setLiveBroadcastContent(LiveBroadcastContent.valueOf(liveBroadcastContentStr));
 
                 String thumbnailUrl = getBestAvailableThumbnailUrl(videoSnippet.path("thumbnails"));
-                newItem.setThumbnailUrl(thumbnailUrl);
+
+                var itemBuilder = Item.builder()
+                        .videoId(videoId)
+                        .title(videoSnippet.path("title").asText())
+                        .description(videoSnippet.path("description").asText(null))
+                        .kind(videoItemNode.path("kind").asText())
+                        .videoPublishedAt(OffsetDateTime.parse(originalSnippet.path("publishedAt").asText()))
+                        .liveBroadcastContent(LiveBroadcastContent.valueOf(liveBroadcastContentStr))
+                        .thumbnailUrl(thumbnailUrl);
 
                 JsonNode liveStreamingDetails = videoItemNode.path("liveStreamingDetails");
                 if (!liveStreamingDetails.isMissingNode() && liveStreamingDetails.has("scheduledStartTime")) {
                     String scheduledTimeStr = liveStreamingDetails.path("scheduledStartTime").asText(null);
                     Objects.requireNonNull(scheduledTimeStr);
-                    newItem.setScheduledStartTime(OffsetDateTime.parse(scheduledTimeStr));
+                    itemBuilder.scheduledStartTime(OffsetDateTime.parse(scheduledTimeStr));
                 }
+
+                Item newItem = itemBuilder.build();
 
                 // Add statistics history
                 appendStatisticsHistory(newItem, videoItemNode);
@@ -383,12 +409,13 @@ public class VideoFetchServiceImpl implements VideoFetchService {
     private boolean appendStatisticsHistory(Item item, JsonNode videoItemNode) {
         JsonNode statisticsNode = videoItemNode.path("statistics");
         if (!statisticsNode.isMissingNode()) {
-            ItemStatisticHistory history = new ItemStatisticHistory();
-            history.setItem(item);
-            history.setRecordedAt(OffsetDateTime.now());
-            history.setViewCount(statisticsNode.path("viewCount").asLong(0L));
-            history.setLikeCount(statisticsNode.path("likeCount").asLong(0L));
-            history.setCommentCount(statisticsNode.path("commentCount").asLong(0L));
+            ItemStatisticHistory history = ItemStatisticHistory.builder()
+                    .item(item)
+                    .recordedAt(OffsetDateTime.now())
+                    .viewCount(statisticsNode.path("viewCount").asLong(0L))
+                    .likeCount(statisticsNode.path("likeCount").asLong(0L))
+                    .commentCount(statisticsNode.path("commentCount").asLong(0L))
+                    .build();
             item.getStatistics().add(history);
             return true;
         }

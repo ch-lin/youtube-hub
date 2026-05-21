@@ -235,8 +235,7 @@ class VideoFetchServiceImplTest {
 
     @Test
     void updateExistingItems_ShouldUpdate_WhenFieldsChanged() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         item.setTitle("Old Title");
         item.setDescription("Old Desc");
         item.setLiveBroadcastContent(LiveBroadcastContent.NONE);
@@ -271,8 +270,7 @@ class VideoFetchServiceImplTest {
 
     @Test
     void updateExistingItems_ShouldUpdateScheduledTime_WhenChanged() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         item.setTitle("Title");
         item.setLiveBroadcastContent(LiveBroadcastContent.UPCOMING);
         item.setScheduledStartTime(OffsetDateTime.parse("2023-01-01T10:00:00Z"));
@@ -305,8 +303,7 @@ class VideoFetchServiceImplTest {
 
     @Test
     void updateExistingItems_ShouldNotUpdate_WhenFieldsSame() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         item.setTitle("Title");
         item.setLiveBroadcastContent(LiveBroadcastContent.NONE);
         item.setVideoPublishedAt(OffsetDateTime.parse("2023-01-01T12:00:00Z"));
@@ -335,8 +332,7 @@ class VideoFetchServiceImplTest {
 
     @Test
     void updateExistingItems_ShouldHandleMissingPublishedAt() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         item.setTitle("Title");
         item.setLiveBroadcastContent(LiveBroadcastContent.NONE);
         item.setVideoPublishedAt(OffsetDateTime.parse("2023-01-01T10:00:00Z"));
@@ -366,8 +362,7 @@ class VideoFetchServiceImplTest {
 
     @Test
     void updateExistingItems_ShouldUpdate_WhenStatisticsPresent() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         item.setTitle("Title");
         item.setLiveBroadcastContent(LiveBroadcastContent.NONE);
 
@@ -399,8 +394,7 @@ class VideoFetchServiceImplTest {
 
     @Test
     void updateExistingItems_ShouldHandleMissingItemsInResponse() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
 
         String responseBody = "{}";
         when(httpClient.get(eq("/youtube/v3/videos"), anyMap(), any())).thenReturn(new HttpClient.Response(200, responseBody));
@@ -503,8 +497,7 @@ class VideoFetchServiceImplTest {
 
     @Test
     void updateExistingItems_ShouldThrowAuthException_WhenApiKeyInvalid() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         when(httpClient.get(any(), any(), any()))
                 .thenThrow(new HttpException("GET", 400, "API key not valid"));
 
@@ -514,8 +507,7 @@ class VideoFetchServiceImplTest {
 
     @Test
     void updateExistingItems_ShouldThrowRequestException_WhenIoException() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         when(httpClient.get(any(), any(), any()))
                 .thenThrow(new IOException("Network error"));
 
@@ -525,8 +517,7 @@ class VideoFetchServiceImplTest {
 
     @Test
     void updateExistingItems_ShouldThrowRequestException_WhenHttpException400ButNotAuth() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         HttpException mockException = org.mockito.Mockito.mock(HttpException.class);
         when(mockException.getStatusCode()).thenReturn(400);
         when(mockException.getMessage()).thenReturn(null);
@@ -541,8 +532,7 @@ class VideoFetchServiceImplTest {
 
     @Test
     void updateExistingItems_ShouldThrowRequestException_WhenHttpException400WithDifferentMessage() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         when(httpClient.get(any(), any(), any()))
                 .thenThrow(new HttpException("GET", 400, "Bad Request: Invalid format"));
 
@@ -553,8 +543,7 @@ class VideoFetchServiceImplTest {
 
     @Test
     void updateExistingItems_ShouldThrowRequestException_WhenHttpException500() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         when(httpClient.get(any(), any(), any()))
                 .thenThrow(new HttpException("GET", 500, "Server Error"));
 
@@ -565,8 +554,7 @@ class VideoFetchServiceImplTest {
 
     @Test
     void updateExistingItems_ShouldThrowRequestException_WhenURISyntaxException() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         when(httpClient.get(any(), any(), any()))
                 .thenThrow(new URISyntaxException("input", "reason"));
 
@@ -686,8 +674,7 @@ class VideoFetchServiceImplTest {
 
     @Test
     void updateExistingItems_ShouldReturnZero_WhenItemsIsNotArray() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
 
         String responseBody = "{\"items\": \"not-an-array\"}";
         when(httpClient.get(eq("/youtube/v3/videos"), anyMap(), any())).thenReturn(new HttpClient.Response(200, responseBody));
@@ -699,8 +686,7 @@ class VideoFetchServiceImplTest {
 
     @Test
     void updateExistingItems_ShouldSkipItem_WhenIdNotInList() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
 
         // Response contains v2, but we requested update for v1
         String responseBody = """
@@ -722,8 +708,7 @@ class VideoFetchServiceImplTest {
 
     @Test
     void updateExistingItems_ShouldHandleLiveStreamingDetails_WithoutScheduledStartTime() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         item.setTitle("Title");
         item.setLiveBroadcastContent(LiveBroadcastContent.LIVE);
 
@@ -753,8 +738,7 @@ class VideoFetchServiceImplTest {
 
     @Test
     void updateExistingItems_ShouldHandleNullScheduledStartTime() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         item.setTitle("Title");
         item.setLiveBroadcastContent(LiveBroadcastContent.UPCOMING);
 
@@ -785,8 +769,7 @@ class VideoFetchServiceImplTest {
     @Test
     void updateExistingItems_ShouldNotUpdate_WhenScheduledTimeSame() throws Exception {
         String timeStr = "2023-01-01T12:00:00Z";
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         item.setTitle("Title");
         item.setLiveBroadcastContent(LiveBroadcastContent.UPCOMING);
         item.setScheduledStartTime(OffsetDateTime.parse(timeStr));
@@ -853,8 +836,7 @@ class VideoFetchServiceImplTest {
 
     @Test
     void syncStatisticsForItems_ShouldUpdate_WhenValidResponse() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
 
         String responseBody = """
             {
@@ -886,8 +868,7 @@ class VideoFetchServiceImplTest {
 
     @Test
     void syncStatisticsForItems_ShouldReturnZero_WhenItemsIsNotArray() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
 
         String responseBody = "{\"items\": \"not-an-array\"}";
         when(httpClient.get(eq("/youtube/v3/videos"), anyMap(), any())).thenReturn(new HttpClient.Response(200, responseBody));
@@ -899,8 +880,7 @@ class VideoFetchServiceImplTest {
 
     @Test
     void syncStatisticsForItems_ShouldNotUpdate_WhenStatisticsMissing() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
 
         // Test branch where video is found but statistics node is missing
         String responseBody = """
@@ -923,8 +903,7 @@ class VideoFetchServiceImplTest {
 
     @Test
     void syncStatisticsForItems_ShouldReturnZero_WhenApiResponseHasNoItems() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
 
         // Test the isMissingNode() branch where items node is completely missing
         String responseBody = "{}";
@@ -937,8 +916,7 @@ class VideoFetchServiceImplTest {
 
     @Test
     void syncStatisticsForItems_ShouldSkipItem_WhenIdNotInList() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
 
         String responseBody = """
             {
@@ -962,8 +940,7 @@ class VideoFetchServiceImplTest {
 
     @Test
     void syncStatisticsForItems_ShouldThrowAuthException_WhenApiKeyInvalid() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         when(httpClient.get(any(), any(), any()))
                 .thenThrow(new HttpException("GET", 400, "API key not valid"));
 
@@ -973,8 +950,7 @@ class VideoFetchServiceImplTest {
 
     @Test
     void syncStatisticsForItems_ShouldThrowRequestException_WhenIoException() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         when(httpClient.get(any(), any(), any()))
                 .thenThrow(new IOException("Network error"));
 
@@ -984,8 +960,7 @@ class VideoFetchServiceImplTest {
 
     @Test
     void syncStatisticsForItems_ShouldThrowRequestException_WhenHttpException400ButNotAuth() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         HttpException mockException = org.mockito.Mockito.mock(HttpException.class);
         when(mockException.getStatusCode()).thenReturn(400);
         when(mockException.getMessage()).thenReturn(null);
@@ -1000,8 +975,7 @@ class VideoFetchServiceImplTest {
 
     @Test
     void syncStatisticsForItems_ShouldThrowRequestException_WhenHttpException400WithDifferentMessage() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         when(httpClient.get(any(), any(), any()))
                 .thenThrow(new HttpException("GET", 400, "Bad Request: Missing parameter"));
 
@@ -1012,8 +986,7 @@ class VideoFetchServiceImplTest {
 
     @Test
     void syncStatisticsForItems_ShouldThrowRequestException_WhenHttpException500() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         when(httpClient.get(any(), any(), any()))
                 .thenThrow(new HttpException("GET", 500, "Server Error"));
 
@@ -1024,8 +997,7 @@ class VideoFetchServiceImplTest {
 
     @Test
     void syncStatisticsForItems_ShouldThrowRequestException_WhenURISyntaxException() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         when(httpClient.get(any(), any(), any()))
                 .thenThrow(new URISyntaxException("input", "reason"));
 

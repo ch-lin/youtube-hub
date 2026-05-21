@@ -73,19 +73,47 @@ class ItemTest {
         playlist = new Playlist(); // Using real objects for simplicity
         tag = new Tag();
 
-        item1 = new Item(videoId, title, description, kind, videoPublishedAt, liveBroadcastContent, scheduledStartTime,
-                thumbnailUrl, storedThumbnailPath, thumbnailStatus, thumbnailRetryCount, thumbnailAttemptedAt, status, playlist, tag, null, null);
-        item2 = new Item(videoId, title, description, kind, videoPublishedAt, liveBroadcastContent, scheduledStartTime,
-                thumbnailUrl, storedThumbnailPath, thumbnailStatus, thumbnailRetryCount, thumbnailAttemptedAt, status, playlist, tag, null, null);
+        item1 = Item.builder()
+                .videoId(videoId)
+                .title(title)
+                .description(description)
+                .kind(kind)
+                .videoPublishedAt(videoPublishedAt)
+                .liveBroadcastContent(liveBroadcastContent)
+                .scheduledStartTime(scheduledStartTime)
+                .thumbnailUrl(thumbnailUrl)
+                .storedThumbnailPath(storedThumbnailPath)
+                .thumbnailStatus(thumbnailStatus)
+                .thumbnailRetryCount(thumbnailRetryCount)
+                .thumbnailAttemptedAt(thumbnailAttemptedAt)
+                .status(status)
+                .playlist(playlist)
+                .tag(tag)
+                .build();
+
+        item2 = Item.builder()
+                .videoId(videoId)
+                .title(title)
+                .description(description)
+                .kind(kind)
+                .videoPublishedAt(videoPublishedAt)
+                .liveBroadcastContent(liveBroadcastContent)
+                .scheduledStartTime(scheduledStartTime)
+                .thumbnailUrl(thumbnailUrl)
+                .storedThumbnailPath(storedThumbnailPath)
+                .thumbnailStatus(thumbnailStatus)
+                .thumbnailRetryCount(thumbnailRetryCount)
+                .thumbnailAttemptedAt(thumbnailAttemptedAt)
+                .status(status)
+                .playlist(playlist)
+                .tag(tag)
+                .build();
     }
 
     @Test
     void testGettersAndSetters() {
-        Item item = new Item();
-        Long id = 1L;
+        Item item = new Item(videoId);
 
-        item.setId(id);
-        item.setVideoId(videoId);
         item.setDescription(description);
         item.setTitle(title);
         item.setKind(kind);
@@ -102,7 +130,7 @@ class ItemTest {
         item.setTag(tag);
 
         assertAll("Verify all getters",
-                () -> assertEquals(id, item.getId()),
+                () -> assertNull(item.getId(), "ID should be null before persisting to the database"),
                 () -> assertEquals(videoId, item.getVideoId()),
                 () -> assertEquals(description, item.getDescription()),
                 () -> assertEquals(title, item.getTitle()),
@@ -133,9 +161,9 @@ class ItemTest {
     }
 
     @Test
-    void testAllArgsConstructor() {
+    void testBuilder() {
         assertNotNull(item1);
-        assertNull(item1.getId()); // BaseEntity ID is not part of AllArgsConstructor
+        assertNull(item1.getId());
         assertEquals(videoId, item1.getVideoId());
         assertEquals(description, item1.getDescription());
         assertEquals(title, item1.getTitle());
@@ -146,6 +174,9 @@ class ItemTest {
         assertEquals(status, item1.getStatus());
         assertEquals(playlist, item1.getPlaylist());
         assertEquals(tag, item1.getTag());
+
+        Item itemWithId = item1.toBuilder().id(1L).build();
+        assertEquals(1L, itemWithId.getId());
     }
 
     @Test
@@ -175,7 +206,7 @@ class ItemTest {
         assertEquals(item1.hashCode(), item2.hashCode());
 
         // Change the field included in 'of' clause (videoId)
-        item2.setVideoId("differentVideoId");
+        item2 = item2.toBuilder().videoId("differentVideoId").build();
         assertNotEquals(item1, item2, "Changing videoId should affect equality");
         assertNotEquals(item1.hashCode(), item2.hashCode());
     }

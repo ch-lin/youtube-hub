@@ -27,6 +27,10 @@ import java.time.OffsetDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.hibernate.annotations.ColumnDefault;
+
+import ch.lin.platform.domain.model.AuditableEntity;
+import ch.lin.platform.domain.model.BaseEntity;
 import static ch.lin.youtube.hub.backend.api.domain.model.Item.TABLE_NAME;
 import static ch.lin.youtube.hub.backend.api.domain.model.Item.VIDEO_ID_COLUMN;
 import jakarta.persistence.CascadeType;
@@ -44,33 +48,40 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import jakarta.validation.constraints.NotNull;
+import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 
 /**
  * Represents a single video item (e.g., a YouTube video) within a playlist,
  * stored as a JPA entity.
  */
-@Table(name = TABLE_NAME, indexes = {
-    @Index(name = BaseEntity.ID_INDEX, columnList = BaseEntity.ID_COLUMN),
-    @Index(name = VIDEO_ID_COLUMN, columnList = VIDEO_ID_COLUMN),
-    @Index(name = "idx_item_thumbnail_status", columnList = Item.THUMBNAIL_STATUS_COLUMN + ", " + Item.THUMBNAIL_ATTEMPTED_AT_COLUMN)}, uniqueConstraints = {
-    @UniqueConstraint(columnNames = VIDEO_ID_COLUMN)})
 @Entity
+@Table(name = TABLE_NAME, indexes = {
+    @Index(name = Item.ID_INDEX, columnList = BaseEntity.ID_COLUMN),
+    @Index(name = VIDEO_ID_COLUMN, columnList = VIDEO_ID_COLUMN),
+    @Index(name = Item.THUMBNAIL_STATUS_INDEX, columnList = Item.THUMBNAIL_STATUS_COLUMN + ", " + Item.THUMBNAIL_ATTEMPTED_AT_COLUMN)}, uniqueConstraints = {
+    @UniqueConstraint(columnNames = VIDEO_ID_COLUMN)})
 @Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
 @EqualsAndHashCode(of = {"videoId"}, callSuper = false)
-public class Item extends BaseEntity {
+@SuperBuilder(toBuilder = true)
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+public class Item extends AuditableEntity {
 
     /**
      * The name of the item table in the database.
      */
     public static final String TABLE_NAME = "item";
+
+    /**
+     * The name of the index for the ID column.
+     */
+    public static final String ID_INDEX = "item_id_index";
 
     /**
      * The name of the video ID column in the database.
@@ -133,6 +144,11 @@ public class Item extends BaseEntity {
     public static final String THUMBNAIL_ATTEMPTED_AT_COLUMN = "thumbnail_attempted_at";
 
     /**
+     * The name of the index for the thumbnail status and attempted at columns.
+     */
+    public static final String THUMBNAIL_STATUS_INDEX = "idx_item_thumbnail_status";
+
+    /**
      * The name of the playlist column in the database, used for the foreign
      * key.
      */
@@ -159,6 +175,16 @@ public class Item extends BaseEntity {
     public static final String STATUS_COLUMN = "status";
 
     /**
+     * The name of the width column in the database.
+     */
+    public static final String WIDTH_COLUMN = "width";
+
+    /**
+     * The name of the height column in the database.
+     */
+    public static final String HEIGHT_COLUMN = "height";
+
+    /**
      * The unique identifier of the YouTube video (e.g., "dQw4w9WgXcQ"). This
      * serves as the business key and is constrained to be unique in the
      * database.
@@ -171,7 +197,8 @@ public class Item extends BaseEntity {
      * The title of the video.
      */
     @NotNull
-    @Column(name = Item.TITLE_COLUMN, length = 300, nullable = false)
+    @Column(name = Item.TITLE_COLUMN, nullable = false, length = 300)
+    @Setter
     private String title;
 
     /**
@@ -180,6 +207,7 @@ public class Item extends BaseEntity {
      */
     @Lob
     @Column(name = Item.DESCRIPTION_COLUMN, columnDefinition = "MEDIUMTEXT")
+    @Setter
     private String description;
 
     /**
@@ -187,6 +215,7 @@ public class Item extends BaseEntity {
      */
     @NotNull
     @Column(name = Item.KIND_COLUMN, nullable = false)
+    @Setter
     private String kind;
 
     /**
@@ -194,6 +223,7 @@ public class Item extends BaseEntity {
      */
     @NotNull
     @Column(name = Item.VIDEO_PUBLISHED_AT_COLUMN, columnDefinition = "TIMESTAMP", nullable = false)
+    @Setter
     private OffsetDateTime videoPublishedAt;
 
     /**
@@ -201,20 +231,25 @@ public class Item extends BaseEntity {
      */
     @NotNull
     @Enumerated(EnumType.STRING)
+    @ColumnDefault("'NONE'")
     @Column(name = Item.LIVE_BROADCAST_CONTENT_COLUMN, nullable = false)
-    private LiveBroadcastContent liveBroadcastContent;
+    @Setter
+    @lombok.Builder.Default
+    private LiveBroadcastContent liveBroadcastContent = LiveBroadcastContent.NONE;
 
     /**
      * The scheduled start time for a live broadcast. This is nullable and only
      * relevant for upcoming live streams.
      */
     @Column(name = Item.SCHEDULED_START_TIME_COLUMN, columnDefinition = "TIMESTAMP")
+    @Setter
     private OffsetDateTime scheduledStartTime;
 
     /**
      * The URL of the thumbnail for the video.
      */
     @Column(name = Item.THUMBNAIL_URL_COLUMN)
+    @Setter
     private String thumbnailUrl;
 
     /**
@@ -222,6 +257,7 @@ public class Item extends BaseEntity {
      * thumbnail is stored in the underlying storage system.
      */
     @Column(name = Item.STORED_THUMBNAIL_PATH_COLUMN)
+    @Setter
     private String storedThumbnailPath;
 
     /**
@@ -230,32 +266,28 @@ public class Item extends BaseEntity {
      */
     @NotNull
     @Enumerated(EnumType.STRING)
+    @ColumnDefault("'PENDING'")
     @Column(name = Item.THUMBNAIL_STATUS_COLUMN, nullable = false)
+    @Setter
+    @lombok.Builder.Default
     private ThumbnailStatus thumbnailStatus = ThumbnailStatus.PENDING;
 
     /**
      * The number of times the system has attempted to download the thumbnail.
      */
-    @Column(name = Item.THUMBNAIL_RETRY_COUNT_COLUMN)
-    private Integer thumbnailRetryCount;
+    @NotNull
+    @ColumnDefault("0")
+    @Column(name = Item.THUMBNAIL_RETRY_COUNT_COLUMN, nullable = false)
+    @Setter
+    @lombok.Builder.Default
+    private Integer thumbnailRetryCount = 0;
 
     /**
      * The timestamp of the last attempt to download the thumbnail.
      */
     @Column(name = Item.THUMBNAIL_ATTEMPTED_AT_COLUMN, columnDefinition = "TIMESTAMP")
+    @Setter
     private OffsetDateTime thumbnailAttemptedAt;
-
-    /**
-     * Custom getter to safely handle null values from legacy database rows.
-     *
-     * @return the retry count, or 0 if it has never been set.
-     */
-    public int getThumbnailRetryCount() {
-        if (thumbnailRetryCount == null) {
-            return 0;
-        }
-        return thumbnailRetryCount;
-    }
 
     /**
      * The processing status of the item, indicating its state in a workflow.
@@ -263,8 +295,25 @@ public class Item extends BaseEntity {
      */
     @NotNull
     @Enumerated(EnumType.STRING)
+    @ColumnDefault("'NEW'")
     @Column(name = Item.STATUS_COLUMN, nullable = false)
+    @Setter
+    @lombok.Builder.Default
     private ProcessingStatus status = ProcessingStatus.NEW;
+
+    /**
+     * The exact width of the video.
+     */
+    @Column(name = Item.WIDTH_COLUMN)
+    @Setter
+    private Integer width;
+
+    /**
+     * The exact height of the video.
+     */
+    @Column(name = Item.HEIGHT_COLUMN)
+    @Setter
+    private Integer height;
 
     /**
      * The {@link Playlist} to which this item belongs. This establishes a
@@ -273,6 +322,7 @@ public class Item extends BaseEntity {
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = Item.PLAYLIST_COLUMN, referencedColumnName = Playlist.ID_COLUMN, nullable = false, updatable = false, foreignKey = @ForeignKey(name = FK_ITEM_PLAYLIST))
+    @Setter
     private Playlist playlist;
 
     /**
@@ -281,6 +331,7 @@ public class Item extends BaseEntity {
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = Item.TAG_COLUMN, referencedColumnName = Tag.ID_COLUMN, foreignKey = @ForeignKey(name = FK_ITEM_TAG))
+    @Setter
     private Tag tag;
 
     /**
@@ -288,13 +339,27 @@ public class Item extends BaseEntity {
      * a one-to-many relationship where changes are cascaded and orphaned
      * {@code DownloadInfo} entities are removed.
      */
-    @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "item", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    @Setter
+    @lombok.Builder.Default
     private Set<DownloadInfo> downloadInfos = new HashSet<>();
 
     /**
      * A set of {@link ItemStatisticHistory} records associated with this item.
      * This tracks the historical statistics (views, likes) over time.
      */
-    @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "item", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    @Setter
+    @lombok.Builder.Default
     private Set<ItemStatisticHistory> statistics = new HashSet<>();
+
+    /**
+     * Creates a new Item with the specified video ID.
+     *
+     * @param videoId The unique YouTube video ID.
+     */
+    public Item(String videoId) {
+        this();
+        this.videoId = videoId;
+    }
 }

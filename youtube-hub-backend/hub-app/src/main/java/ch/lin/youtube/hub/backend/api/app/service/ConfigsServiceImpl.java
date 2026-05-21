@@ -133,28 +133,30 @@ public class ConfigsServiceImpl implements ConfigsService {
             hubConfigRepository.saveAll(enabledConfigs);
         }
 
-        HubConfig newConfig = new HubConfig();
-        newConfig.setName(configName);
-        newConfig.setEnabled(command.getEnabled());
-        newConfig.setYoutubeApiKey(command.getYoutubeApiKey());
-        newConfig.setClientId(command.getClientId());
-        newConfig.setClientSecret(command.getClientSecret());
-        newConfig.setAutoStartFetchScheduler(command.getAutoStartFetchScheduler());
-        newConfig.setSchedulerType(command.getSchedulerType());
-        newConfig.setFixedRate(command.getFixedRate());
         validateCronExpression(command.getCronExpression());
-        newConfig.setCronExpression(command.getCronExpression());
         validateCronTimeZone(command.getCronTimeZone());
-        newConfig.setCronTimeZone(command.getCronTimeZone());
-        newConfig.setQuota(command.getQuota());
         validateQuotaThreshold(command.getQuotaSafetyThreshold());
-        newConfig.setQuotaSafetyThreshold(command.getQuotaSafetyThreshold());
-        newConfig.setApiCallDelay(command.getApiCallDelay());
-        newConfig.setActiveVideosSyncDays(command.getActiveVideosSyncDays());
         validateMaxThumbnailRetries(command.getMaxThumbnailRetries());
-        newConfig.setMaxThumbnailRetries(command.getMaxThumbnailRetries());
 
-        return hubConfigRepository.save(newConfig);
+        HubConfig newConfig = HubConfig.builder()
+                .name(configName)
+                .enabled(command.getEnabled())
+                .youtubeApiKey(command.getYoutubeApiKey())
+                .clientId(command.getClientId())
+                .clientSecret(command.getClientSecret())
+                .autoStartFetchScheduler(command.getAutoStartFetchScheduler())
+                .schedulerType(command.getSchedulerType())
+                .fixedRate(command.getFixedRate())
+                .cronExpression(command.getCronExpression())
+                .cronTimeZone(command.getCronTimeZone())
+                .quota(command.getQuota())
+                .quotaSafetyThreshold(command.getQuotaSafetyThreshold())
+                .apiCallDelay(command.getApiCallDelay())
+                .activeVideosSyncDays(command.getActiveVideosSyncDays())
+                .maxThumbnailRetries(command.getMaxThumbnailRetries())
+                .build();
+
+        return hubConfigRepository.save(Objects.requireNonNull(newConfig));
     }
 
     /**
@@ -238,8 +240,7 @@ public class ConfigsServiceImpl implements ConfigsService {
         HubConfig config = hubConfigRepository.findByName(configName)
                 .orElseGet(() -> {
                     logger.info("No configuration found with name '{}'. Creating a new one.", configName);
-                    HubConfig newConfig = new HubConfig();
-                    newConfig.setName(configName);
+                    HubConfig newConfig = new HubConfig(configName);
                     return newConfig;
                 });
 
@@ -313,6 +314,10 @@ public class ConfigsServiceImpl implements ConfigsService {
             logger.debug("Using config '{}' from database and resolving with defaults.", dbConfig.getName());
             HubConfig defaultConfig = defaultConfigFactory.create(defaultProperties);
 
+            // Note: Setters are intentionally used here on the managed JPA entity.
+            // If any values are missing, they are populated from application properties
+            // and will be automatically persisted back to the database via JPA dirty checking.
+            // This serves as an auto-healing mechanism for the configurations.
             if (dbConfig.getEnabled() == null) {
                 dbConfig.setEnabled(defaultConfig.getEnabled());
             }

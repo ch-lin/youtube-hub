@@ -32,8 +32,7 @@ class ChannelResponseTest {
 
     @Test
     void channelResponse_ShouldMapFromEntity() {
-        Channel channel = new Channel();
-        channel.setChannelId("ch1");
+        Channel channel = new Channel("ch1");
         channel.setTitle("Test Channel");
         ChannelResponse response = new ChannelResponse(channel);
 

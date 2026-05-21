@@ -59,7 +59,7 @@ class YoutubeApiUsageServiceImplTest {
 
     @Test
     void getUsageHistory_ShouldReturnAll_WhenDatesAreNull() {
-        YoutubeApiUsage usage = new YoutubeApiUsage();
+        YoutubeApiUsage usage = new YoutubeApiUsage(LocalDate.now());
         when(youtubeApiUsageRepository.findAllByOrderByUsageDateDesc()).thenReturn(List.of(usage));
 
         List<YoutubeApiUsage> result = service.getUsageHistory(null, null);
@@ -72,7 +72,7 @@ class YoutubeApiUsageServiceImplTest {
     void getUsageHistory_ShouldFilterByDate_WhenDatesProvided() {
         LocalDate start = LocalDate.of(2023, 1, 1);
         LocalDate end = LocalDate.of(2023, 1, 31);
-        YoutubeApiUsage usage = new YoutubeApiUsage();
+        YoutubeApiUsage usage = new YoutubeApiUsage(start);
         when(youtubeApiUsageRepository.findByUsageDateBetweenOrderByUsageDateDesc(start, end))
                 .thenReturn(List.of(usage));
 
@@ -101,7 +101,7 @@ class YoutubeApiUsageServiceImplTest {
 
     @Test
     void recordUsage_ShouldIncrementExisting_WhenRecordExists() {
-        YoutubeApiUsage existing = new YoutubeApiUsage();
+        YoutubeApiUsage existing = new YoutubeApiUsage(LocalDate.now());
         existing.setRequestCount(10);
         existing.setQuotaUsed(100);
 
@@ -132,7 +132,7 @@ class YoutubeApiUsageServiceImplTest {
 
     @Test
     void hasSufficientQuota_ShouldReturnTrue_WhenUsageIsLow() {
-        YoutubeApiUsage usage = new YoutubeApiUsage();
+        YoutubeApiUsage usage = new YoutubeApiUsage(LocalDate.now());
         usage.setQuotaUsed(100L);
         when(youtubeApiUsageRepository.findByUsageDate(any(LocalDate.class))).thenReturn(Optional.of(usage));
 
@@ -143,7 +143,7 @@ class YoutubeApiUsageServiceImplTest {
 
     @Test
     void hasSufficientQuota_ShouldReturnFalse_WhenUsageIsHigh() {
-        YoutubeApiUsage usage = new YoutubeApiUsage();
+        YoutubeApiUsage usage = new YoutubeApiUsage(LocalDate.now());
         usage.setQuotaUsed(900L);
         when(youtubeApiUsageRepository.findByUsageDate(any(LocalDate.class))).thenReturn(Optional.of(usage));
 

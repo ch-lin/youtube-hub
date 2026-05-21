@@ -54,24 +54,28 @@ class PlaylistTest {
         processedAt = OffsetDateTime.now();
         lastPageToken = "CAUQAA";
         channel = new Channel(); // A simple new Channel object is sufficient for these tests
-        playlist = new Playlist(playlistId, title, processedAt, lastPageToken, channel, new HashSet<>());
+        playlist = Playlist.builder()
+                .playlistId(playlistId)
+                .title(title)
+                .processedAt(processedAt)
+                .lastPageToken(lastPageToken)
+                .channel(channel)
+                .items(new HashSet<>())
+                .build();
     }
 
     @Test
     void testGettersAndSetters() {
-        Playlist p = new Playlist();
-        Long id = 1L;
+        Playlist p = new Playlist(playlistId);
         Set<Item> items = new HashSet<>();
 
-        p.setId(id);
-        p.setPlaylistId(playlistId);
         p.setTitle(title);
         p.setProcessedAt(processedAt);
         p.setLastPageToken(lastPageToken);
         p.setChannel(channel);
         p.setItems(items);
 
-        assertEquals(id, p.getId());
+        assertNull(p.getId(), "ID should be null before persisting to the database");
         assertEquals(playlistId, p.getPlaylistId());
         assertEquals(title, p.getTitle());
         assertEquals(processedAt, p.getProcessedAt());
@@ -90,15 +94,26 @@ class PlaylistTest {
         assertNull(p.getProcessedAt());
         assertNull(p.getLastPageToken());
         assertNull(p.getChannel());
-        assertNull(p.getItems());
+        assertNotNull(p.getItems());
+        assertTrue(p.getItems().isEmpty());
     }
 
     @Test
-    void testAllArgsConstructor() {
+    void testBuilder() {
+        Long id = 1L;
         Set<Item> items = new HashSet<>();
-        Playlist p = new Playlist(playlistId, title, processedAt, lastPageToken, channel, items);
+        Playlist p = Playlist.builder()
+                .id(id)
+                .playlistId(playlistId)
+                .title(title)
+                .processedAt(processedAt)
+                .lastPageToken(lastPageToken)
+                .channel(channel)
+                .items(items)
+                .build();
 
         assertNotNull(p);
+        assertEquals(id, p.getId());
         assertEquals(playlistId, p.getPlaylistId());
         assertEquals(title, p.getTitle());
         assertEquals(processedAt, p.getProcessedAt());
@@ -109,9 +124,14 @@ class PlaylistTest {
 
     @Test
     void testEqualsAndHashCode() {
-        Playlist playlist2 = new Playlist(playlistId, title, processedAt, lastPageToken, new Channel(), new HashSet<>());
-        Playlist playlist3 = new Playlist("differentId", title, processedAt, lastPageToken, channel, new HashSet<>());
-        Playlist playlist4 = new Playlist(playlistId, "differentTitle", processedAt, lastPageToken, channel, new HashSet<>());
+        Playlist playlist2 = new Playlist(playlistId);
+        playlist2.setTitle(title);
+
+        Playlist playlist3 = new Playlist("differentId");
+        playlist3.setTitle(title);
+
+        Playlist playlist4 = new Playlist(playlistId);
+        playlist4.setTitle("differentTitle");
 
         // Test for equality
         assertEquals(playlist, playlist2);
@@ -132,8 +152,7 @@ class PlaylistTest {
 
     @Test
     void testAddItem() {
-        Item item = new Item();
-        item.setVideoId("video123");
+        Item item = new Item("video123");
 
         // The set is initialized as empty in setUp, not null.
         assertNotNull(playlist.getItems());
@@ -152,8 +171,7 @@ class PlaylistTest {
 
     @Test
     void testRemoveItem() {
-        Item item = new Item();
-        item.setVideoId("video123");
+        Item item = new Item("video123");
 
         // Pre-set the playlist on the item to stabilize its hashCode.
         item.setPlaylist(playlist);
@@ -173,18 +191,19 @@ class PlaylistTest {
     @Test
     void testRemoveItemFromNullSet() {
         Playlist p = new Playlist();
+        p.setItems(null); // Force items to be null to cover the missing branch
         Item item = new Item();
         // Should not throw an exception
         assertDoesNotThrow(() -> p.removeItem(item));
     }
 
     @Test
-    void testAddItemWhenItemsSetIsNull() {
-        Playlist p = new Playlist(); // items is null here
-        assertNull(p.getItems(), "Items collection should be null initially.");
+    void testAddItemToEmptySet() {
+        Playlist p = new Playlist(); // items is empty here
+        assertNotNull(p.getItems(), "Items collection should not be null initially.");
+        assertTrue(p.getItems().isEmpty(), "Items collection should be empty initially.");
 
-        Item item = new Item();
-        item.setVideoId("video123");
+        Item item = new Item("video123");
         // Pre-set the playlist to stabilize hashCode.
         item.setPlaylist(p);
 
@@ -193,5 +212,18 @@ class PlaylistTest {
         assertNotNull(p.getItems(), "Items collection should be initialized after adding an item.");
         assertTrue(p.getItems().contains(item), "Item should be in the collection after being added.");
         assertEquals(p, item.getPlaylist(), "Bidirectional relationship should be set.");
+    }
+
+    @Test
+    void testAddItemWhenItemsSetIsNull() {
+        Playlist p = new Playlist();
+        p.setItems(null); // Force items to be null to cover the missing branch
+
+        Item item = new Item("video123");
+        item.setPlaylist(p);
+        p.addItem(item);
+
+        assertNotNull(p.getItems(), "Items collection should be initialized after adding an item.");
+        assertTrue(p.getItems().contains(item), "Item should be in the collection after being added.");
     }
 }

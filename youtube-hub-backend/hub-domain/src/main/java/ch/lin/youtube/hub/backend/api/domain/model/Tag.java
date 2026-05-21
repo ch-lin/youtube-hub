@@ -26,6 +26,8 @@ package ch.lin.youtube.hub.backend.api.domain.model;
 import java.util.HashSet;
 import java.util.Set;
 
+import ch.lin.platform.domain.model.AuditableEntity;
+import ch.lin.platform.domain.model.BaseEntity;
 import static ch.lin.youtube.hub.backend.api.domain.model.Tag.NAME_COLUMN;
 import static ch.lin.youtube.hub.backend.api.domain.model.Tag.NAME_INDEX;
 import static ch.lin.youtube.hub.backend.api.domain.model.Tag.TABLE_NAME;
@@ -38,31 +40,38 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import jakarta.validation.constraints.NotNull;
+import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 
 /**
  * Represents a tag used to categorize video items, stored as a JPA entity.
  */
+@Entity
 @Table(name = TABLE_NAME, indexes = {
-    @Index(name = BaseEntity.ID_INDEX, columnList = BaseEntity.ID_COLUMN),
+    @Index(name = Tag.ID_INDEX, columnList = BaseEntity.ID_COLUMN),
     @Index(name = NAME_INDEX, columnList = NAME_COLUMN)}, uniqueConstraints = {
     @UniqueConstraint(columnNames = NAME_COLUMN)})
-@Entity
 @Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
 @EqualsAndHashCode(of = {"name"}, callSuper = false)
-public class Tag extends BaseEntity {
+@SuperBuilder(toBuilder = true)
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+public class Tag extends AuditableEntity {
 
     /**
      * The name of the tag table in the database.
      */
     public static final String TABLE_NAME = "tag";
+
+    /**
+     * The name of the index for the ID column.
+     */
+    public static final String ID_INDEX = "tag_id_index";
 
     /**
      * The name of the name column in the database.
@@ -79,7 +88,7 @@ public class Tag extends BaseEntity {
      * as the business key.
      */
     @NotNull
-    @Column(name = Tag.NAME_COLUMN, unique = true, nullable = false)
+    @Column(name = Tag.NAME_COLUMN, nullable = false, unique = true)
     private String name;
 
     /**
@@ -91,7 +100,19 @@ public class Tag extends BaseEntity {
      * associated items.
      */
     @OneToMany(mappedBy = "tag", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
-    private Set<Item> items;
+    @Setter
+    @lombok.Builder.Default
+    private Set<Item> items = new java.util.HashSet<>();
+
+    /**
+     * Creates a new Tag with the specified name.
+     *
+     * @param name The unique tag name.
+     */
+    public Tag(String name) {
+        this();
+        this.name = name;
+    }
 
     /**
      * Adds an item to this tag.

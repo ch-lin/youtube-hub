@@ -41,7 +41,7 @@ import ch.lin.youtube.hub.backend.api.domain.model.HubConfig;
  * for managing hub configurations in the database.
  */
 @Repository
-public interface HubConfigRepository extends JpaRepository<HubConfig, String> {
+public interface HubConfigRepository extends JpaRepository<HubConfig, Long> {
 
     /**
      * Deletes all records from the {@code HubConfig} entity table.

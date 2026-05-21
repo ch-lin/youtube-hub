@@ -141,8 +141,7 @@ class ItemServiceImplTest {
 
     @Test
     void updateItemFileInfo_ShouldUpdateStatusOnly_WhenNoFileInfo() {
-        Item item = new Item();
-        item.setVideoId("vid1");
+        Item item = new Item("vid1");
         item.setStatus(ProcessingStatus.NEW);
         when(itemRepository.findByVideoIdWithAssociations("vid1")).thenReturn(Optional.of(item));
 
@@ -154,9 +153,8 @@ class ItemServiceImplTest {
 
     @Test
     void updateItemFileInfo_ShouldUpdateExistingDownloadInfo_WhenTaskIdProvided() {
-        Item item = new Item();
-        item.setVideoId("vid1");
-        DownloadInfo info = new DownloadInfo();
+        Item item = new Item("vid1");
+        DownloadInfo info = new DownloadInfo(item);
         info.setDownloadTaskId("task1");
         item.setDownloadInfos(new HashSet<>(List.of(info)));
 
@@ -171,8 +169,7 @@ class ItemServiceImplTest {
 
     @Test
     void updateItemFileInfo_ShouldThrow_WhenTaskIdProvidedButNotFound() {
-        Item item = new Item();
-        item.setVideoId("vid1");
+        Item item = new Item("vid1");
         item.setDownloadInfos(new HashSet<>());
 
         when(itemRepository.findByVideoIdWithAssociations("vid1")).thenReturn(Optional.of(item));
@@ -184,8 +181,7 @@ class ItemServiceImplTest {
 
     @Test
     void updateItemFileInfo_ShouldCreateNewDownloadInfo_WhenTaskIdNotProvidedAndNoManualInfo() {
-        Item item = new Item();
-        item.setVideoId("vid1");
+        Item item = new Item("vid1");
         item.setDownloadInfos(new HashSet<>());
 
         when(itemRepository.findByVideoIdWithAssociations("vid1")).thenReturn(Optional.of(item));
@@ -200,15 +196,12 @@ class ItemServiceImplTest {
 
     @Test
     void updateItemFileInfo_ShouldAssociateTag_WhenTagsFoundInPath() {
-        Item item = new Item();
-        item.setVideoId("vid1");
+        Item item = new Item("vid1");
         item.setDownloadInfos(new HashSet<>());
         when(itemRepository.findByVideoIdWithAssociations("vid1")).thenReturn(Optional.of(item));
 
-        Tag tagShort = new Tag();
-        tagShort.setName("Short");
-        Tag tagLong = new Tag();
-        tagLong.setName("LongerTag");
+        Tag tagShort = new Tag("Short");
+        Tag tagLong = new Tag("LongerTag");
 
         when(tagRepository.findTagsWithinFilePath("path/LongerTag/file.mp4")).thenReturn(List.of(tagShort, tagLong));
         when(itemRepository.findByTagAndVideoIdNotAndDownloadInfosFileSize(any(), anyString(), anyLong())).thenReturn(Collections.emptyList());
@@ -221,8 +214,7 @@ class ItemServiceImplTest {
 
     @Test
     void updateItemFileInfo_ShouldWarn_WhenNoTagsFoundInPath() {
-        Item item = new Item();
-        item.setVideoId("vid1");
+        Item item = new Item("vid1");
         item.setDownloadInfos(new HashSet<>());
         when(itemRepository.findByVideoIdWithAssociations("vid1")).thenReturn(Optional.of(item));
 
@@ -236,17 +228,14 @@ class ItemServiceImplTest {
 
     @Test
     void updateItemFileInfo_ShouldWarn_WhenDuplicateFound() {
-        Item item = new Item();
-        item.setVideoId("vid1");
+        Item item = new Item("vid1");
         item.setDownloadInfos(new HashSet<>());
         when(itemRepository.findByVideoIdWithAssociations("vid1")).thenReturn(Optional.of(item));
 
-        Tag tag = new Tag();
-        tag.setName("Tag");
+        Tag tag = new Tag("Tag");
         when(tagRepository.findTagsWithinFilePath("path/Tag/file.mp4")).thenReturn(List.of(tag));
 
-        Item duplicate = new Item();
-        duplicate.setVideoId("vid2");
+        Item duplicate = new Item("vid2");
         duplicate.setTitle("Dup Title");
         when(itemRepository.findByTagAndVideoIdNotAndDownloadInfosFileSize(tag, "vid1", 100L)).thenReturn(List.of(duplicate));
 
@@ -260,9 +249,8 @@ class ItemServiceImplTest {
 
     @Test
     void updateItemFileInfo_ShouldUpdateFileSizeOnly_WhenFilePathIsNull() {
-        Item item = new Item();
-        item.setVideoId("vid1");
-        DownloadInfo info = new DownloadInfo();
+        Item item = new Item("vid1");
+        DownloadInfo info = new DownloadInfo(item);
         info.setDownloadTaskId("task1");
         info.setFilePath("old/path");
         item.setDownloadInfos(new HashSet<>(List.of(info)));
@@ -277,9 +265,8 @@ class ItemServiceImplTest {
 
     @Test
     void updateItemFileInfo_ShouldUpdateFilePathOnly_WhenFileSizeIsNull() {
-        Item item = new Item();
-        item.setVideoId("vid1");
-        DownloadInfo info = new DownloadInfo();
+        Item item = new Item("vid1");
+        DownloadInfo info = new DownloadInfo(item);
         info.setDownloadTaskId("task1");
         info.setFileSize(500L);
         item.setDownloadInfos(new HashSet<>(List.of(info)));
@@ -295,8 +282,7 @@ class ItemServiceImplTest {
 
     @Test
     void updateItemFileInfo_ShouldTreatBlankTaskIdAsManual() {
-        Item item = new Item();
-        item.setVideoId("vid1");
+        Item item = new Item("vid1");
         item.setDownloadInfos(new HashSet<>());
 
         when(itemRepository.findByVideoIdWithAssociations("vid1")).thenReturn(Optional.of(item));
@@ -310,9 +296,8 @@ class ItemServiceImplTest {
 
     @Test
     void updateItemFileInfo_ShouldUpdateExistingManualDownloadInfo() {
-        Item item = new Item();
-        item.setVideoId("vid1");
-        DownloadInfo manualInfo = new DownloadInfo();
+        Item item = new Item("vid1");
+        DownloadInfo manualInfo = new DownloadInfo(item);
         manualInfo.setDownloadTaskId(null);
         manualInfo.setFileSize(100L);
         item.setDownloadInfos(new HashSet<>(List.of(manualInfo)));
@@ -327,9 +312,8 @@ class ItemServiceImplTest {
 
     @Test
     void updateItemFileInfo_ShouldCreateNewManualInfo_WhenOnlyTaskInfosExist() {
-        Item item = new Item();
-        item.setVideoId("vid1");
-        DownloadInfo taskInfo = new DownloadInfo();
+        Item item = new Item("vid1");
+        DownloadInfo taskInfo = new DownloadInfo(item);
         taskInfo.setDownloadTaskId("task1");
         item.setDownloadInfos(new HashSet<>(List.of(taskInfo)));
 
@@ -344,9 +328,8 @@ class ItemServiceImplTest {
 
     @Test
     void updateItemFileInfo_ShouldSkipTagLogic_WhenFilePathIsBlank() {
-        Item item = new Item();
-        item.setVideoId("vid1");
-        DownloadInfo info = new DownloadInfo();
+        Item item = new Item("vid1");
+        DownloadInfo info = new DownloadInfo(item);
         info.setDownloadTaskId("task1");
         item.setDownloadInfos(new HashSet<>(List.of(info)));
 
@@ -360,13 +343,11 @@ class ItemServiceImplTest {
 
     @Test
     void updateItemFileInfo_ShouldSkipDuplicateCheck_WhenFileSizeIsZero() {
-        Item item = new Item();
-        item.setVideoId("vid1");
+        Item item = new Item("vid1");
         item.setDownloadInfos(new HashSet<>());
         when(itemRepository.findByVideoIdWithAssociations("vid1")).thenReturn(Optional.of(item));
 
-        Tag tag = new Tag();
-        tag.setName("Tag");
+        Tag tag = new Tag("Tag");
         when(tagRepository.findTagsWithinFilePath("path/Tag/file.mp4")).thenReturn(List.of(tag));
 
         itemService.updateItemFileInfo("vid1", null, 0L, "path/Tag/file.mp4", null);
@@ -377,20 +358,16 @@ class ItemServiceImplTest {
 
     @Test
     void updateItemFileInfo_ShouldFormatMultipleDuplicates() {
-        Item item = new Item();
-        item.setVideoId("vid1");
+        Item item = new Item("vid1");
         item.setDownloadInfos(new HashSet<>());
         when(itemRepository.findByVideoIdWithAssociations("vid1")).thenReturn(Optional.of(item));
 
-        Tag tag = new Tag();
-        tag.setName("Tag");
+        Tag tag = new Tag("Tag");
         when(tagRepository.findTagsWithinFilePath("path/Tag/file.mp4")).thenReturn(List.of(tag));
 
-        Item dup1 = new Item();
-        dup1.setVideoId("v2");
+        Item dup1 = new Item("v2");
         dup1.setTitle("Title2");
-        Item dup2 = new Item();
-        dup2.setVideoId("v3");
+        Item dup2 = new Item("v3");
         dup2.setTitle("Title3");
 
         when(itemRepository.findByTagAndVideoIdNotAndDownloadInfosFileSize(tag, "vid1", 100L)).thenReturn(List.of(dup1, dup2));
@@ -407,13 +384,11 @@ class ItemServiceImplTest {
 
     @Test
     void updateItemFileInfo_ShouldAssociateTag_WhenFileSizeIsNull() {
-        Item item = new Item();
-        item.setVideoId("vid1");
+        Item item = new Item("vid1");
         item.setDownloadInfos(new HashSet<>());
         when(itemRepository.findByVideoIdWithAssociations("vid1")).thenReturn(Optional.of(item));
 
-        Tag tag = new Tag();
-        tag.setName("Tag");
+        Tag tag = new Tag("Tag");
         when(tagRepository.findTagsWithinFilePath("path/Tag/file.mp4")).thenReturn(List.of(tag));
 
         itemService.updateItemFileInfo("vid1", null, null, "path/Tag/file.mp4", null);

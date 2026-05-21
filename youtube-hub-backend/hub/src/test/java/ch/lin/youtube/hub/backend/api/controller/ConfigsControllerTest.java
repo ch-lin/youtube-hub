@@ -104,8 +104,7 @@ class ConfigsControllerTest {
         createRequest.setQuotaSafetyThreshold(1000L);
         createRequest.setMaxThumbnailRetries(5);
 
-        HubConfig created = new HubConfig();
-        created.setName("new-config");
+        HubConfig created = new HubConfig("new-config");
         when(configsService.createConfig(any(CreateConfigCommand.class))).thenReturn(created);
 
         ResponseEntity<ApiResponse<HubConfig>> response = configsController.createConfig(createRequest);
@@ -142,8 +141,7 @@ class ConfigsControllerTest {
 
     @Test
     void getConfig_ShouldReturnConfig() {
-        HubConfig config = new HubConfig();
-        config.setName("test");
+        HubConfig config = new HubConfig("test");
         when(configsService.getConfig("test")).thenReturn(config);
 
         ResponseEntity<HubConfig> response = configsController.getConfig("test");
@@ -168,8 +166,7 @@ class ConfigsControllerTest {
         updateRequest.setQuotaSafetyThreshold(500L);
         updateRequest.setMaxThumbnailRetries(8);
 
-        HubConfig saved = new HubConfig();
-        saved.setName("test");
+        HubConfig saved = new HubConfig("test");
         saved.setEnabled(true);
         when(configsService.saveConfig(any(UpdateConfigCommand.class))).thenReturn(saved);
 

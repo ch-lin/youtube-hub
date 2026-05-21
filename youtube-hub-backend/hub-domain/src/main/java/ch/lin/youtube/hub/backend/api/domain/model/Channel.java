@@ -25,6 +25,8 @@ package ch.lin.youtube.hub.backend.api.domain.model;
 
 import java.util.Set;
 
+import ch.lin.platform.domain.model.AuditableEntity;
+import ch.lin.platform.domain.model.BaseEntity;
 import static ch.lin.youtube.hub.backend.api.domain.model.Channel.CHANNEL_ID_COLUMN;
 import static ch.lin.youtube.hub.backend.api.domain.model.Channel.TABLE_NAME;
 import jakarta.persistence.CascadeType;
@@ -36,26 +38,28 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import jakarta.validation.constraints.NotNull;
+import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 
 /**
  * Represents a YouTube channel as a JPA entity.
  */
-@Table(name = TABLE_NAME, indexes = {
-    @Index(name = BaseEntity.ID_INDEX, columnList = BaseEntity.ID_COLUMN),
-    @Index(name = CHANNEL_ID_COLUMN, columnList = CHANNEL_ID_COLUMN)}, uniqueConstraints = {
-    @UniqueConstraint(columnNames = CHANNEL_ID_COLUMN)})
 @Entity
+@Table(name = TABLE_NAME, indexes = {
+    @Index(name = Channel.ID_INDEX, columnList = BaseEntity.ID_COLUMN),
+    @Index(name = Channel.CHANNEL_ID_INDEX, columnList = CHANNEL_ID_COLUMN)}, uniqueConstraints = {
+    @UniqueConstraint(columnNames = CHANNEL_ID_COLUMN)})
 @Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
 @EqualsAndHashCode(of = {"channelId"}, callSuper = false)
-public class Channel extends BaseEntity {
+@SuperBuilder(toBuilder = true)
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+public class Channel extends AuditableEntity {
 
     /**
      * The name of the channel table in the database.
@@ -63,9 +67,19 @@ public class Channel extends BaseEntity {
     public static final String TABLE_NAME = "channel";
 
     /**
+     * The name of the index for the ID column.
+     */
+    public static final String ID_INDEX = "channel_id_index";
+
+    /**
      * The name of the channel ID column in the database.
      */
     public static final String CHANNEL_ID_COLUMN = "channel_id";
+
+    /**
+     * The name of the index for the channel ID column.
+     */
+    public static final String CHANNEL_ID_INDEX = "channel_channel_id_index";
 
     /**
      * The name of the title column in the database.
@@ -91,12 +105,14 @@ public class Channel extends BaseEntity {
      */
     @NotNull
     @Column(name = Channel.TITLE_COLUMN, nullable = false)
+    @Setter
     private String title;
 
     /**
      * The handle of the YouTube channel.
      */
     @Column(name = Channel.HANDLE_COLUMN, unique = true)
+    @Setter
     private String handle;
 
     /**
@@ -104,6 +120,18 @@ public class Channel extends BaseEntity {
      * relationship, managed by the {@link Playlist} entity. Changes are
      * cascaded, and orphaned playlists are removed automatically.
      */
-    @OneToMany(mappedBy = Playlist.CHANNEL_COLUMN, fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<Playlist> playlists;
+    @OneToMany(mappedBy = "channel", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    @Setter
+    @lombok.Builder.Default
+    private Set<Playlist> playlists = new java.util.HashSet<>();
+
+    /**
+     * Creates a new Channel with the specified channel ID.
+     *
+     * @param channelId The unique YouTube channel ID.
+     */
+    public Channel(String channelId) {
+        this();
+        this.channelId = channelId;
+    }
 }

@@ -76,8 +76,7 @@ class ItemControllerTest {
     @Test
     @SuppressWarnings("null")
     void getAllItems_ShouldReturnItems() {
-        Item item = new Item();
-        item.setVideoId("vid1");
+        Item item = new Item("vid1");
         item.setStoredThumbnailPath("vid1.jpg");
         Page<Item> page = new PageImpl<>(List.of(item));
         Pageable pageable = PageRequest.of(0, 50);
@@ -98,8 +97,7 @@ class ItemControllerTest {
     @Test
     @SuppressWarnings("null")
     void getAllItems_ShouldHandleNullThumbnailPath() {
-        Item item = new Item();
-        item.setVideoId("vid2");
+        Item item = new Item("vid2");
         // storedThumbnailPath is intentionally null
         Page<Item> page = new PageImpl<>(List.of(item));
         Pageable pageable = PageRequest.of(0, 50);
@@ -184,8 +182,7 @@ class ItemControllerTest {
         request.setFilePath("/path/to/file");
         request.setStatus(ProcessingStatus.DOWNLOADED);
 
-        Item updatedItem = new Item();
-        updatedItem.setVideoId(videoId);
+        Item updatedItem = new Item(videoId);
         updatedItem.setStatus(ProcessingStatus.DOWNLOADED);
         updatedItem.setStoredThumbnailPath("vid1.jpg");
 
@@ -213,8 +210,7 @@ class ItemControllerTest {
         request.setFilePath("/path/to/file");
         request.setStatus(ProcessingStatus.DOWNLOADED);
 
-        Item updatedItem = new Item();
-        updatedItem.setVideoId(videoId);
+        Item updatedItem = new Item(videoId);
         updatedItem.setStatus(ProcessingStatus.DOWNLOADED);
         // storedThumbnailPath is intentionally null
 
