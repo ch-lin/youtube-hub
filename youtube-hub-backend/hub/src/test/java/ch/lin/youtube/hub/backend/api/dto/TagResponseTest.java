@@ -32,8 +32,7 @@ class TagResponseTest {
 
     @Test
     void tagResponse_ShouldMapFromEntity() {
-        Tag tag = new Tag();
-        tag.setName("test-tag");
+        Tag tag = new Tag("test-tag");
         TagResponse response = new TagResponse(tag);
 
         assertThat(response.getName()).isEqualTo("test-tag");

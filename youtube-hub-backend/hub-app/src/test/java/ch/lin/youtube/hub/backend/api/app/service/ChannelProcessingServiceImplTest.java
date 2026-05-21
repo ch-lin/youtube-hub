@@ -82,8 +82,7 @@ class ChannelProcessingServiceImplTest {
     @Test
     @SuppressWarnings("null")
     void prepareChannelAndPlaylist_ShouldReturnPlaylist_WhenExists() throws Exception {
-        Channel channel = new Channel();
-        channel.setChannelId("UC123");
+        Channel channel = new Channel("UC123");
         channel.setTitle("Title");
 
         String responseBody = """
@@ -100,8 +99,7 @@ class ChannelProcessingServiceImplTest {
         when(youtubeApiUsageService.hasSufficientQuota(anyLong(), anyLong())).thenReturn(true);
         when(httpClient.get(anyString(), anyMap(), any())).thenReturn(new HttpClient.Response(200, responseBody));
 
-        Playlist existingPlaylist = new Playlist();
-        existingPlaylist.setPlaylistId("UU123");
+        Playlist existingPlaylist = new Playlist("UU123");
         when(playlistRepository.findByPlaylistId("UU123")).thenReturn(Optional.of(existingPlaylist));
 
         Playlist result = service.prepareChannelAndPlaylist(channel, httpClient, "key", 0, 100, 10);
@@ -115,8 +113,7 @@ class ChannelProcessingServiceImplTest {
     @Test
     @SuppressWarnings("null")
     void prepareChannelAndPlaylist_ShouldCreatePlaylist_WhenNotExists() throws Exception {
-        Channel channel = new Channel();
-        channel.setChannelId("UC123");
+        Channel channel = new Channel("UC123");
         channel.setTitle("Title");
 
         String responseBody = """
@@ -144,8 +141,7 @@ class ChannelProcessingServiceImplTest {
 
     @Test
     void prepareChannelAndPlaylist_ShouldUpdateChannelTitle_WhenChanged() throws Exception {
-        Channel channel = new Channel();
-        channel.setChannelId("UC123");
+        Channel channel = new Channel("UC123");
         channel.setTitle("Old Title");
 
         String responseBody = """
@@ -161,7 +157,7 @@ class ChannelProcessingServiceImplTest {
 
         when(youtubeApiUsageService.hasSufficientQuota(anyLong(), anyLong())).thenReturn(true);
         when(httpClient.get(anyString(), anyMap(), any())).thenReturn(new HttpClient.Response(200, responseBody));
-        when(playlistRepository.findByPlaylistId("UU123")).thenReturn(Optional.of(new Playlist()));
+        when(playlistRepository.findByPlaylistId("UU123")).thenReturn(Optional.of(new Playlist("UU123")));
 
         service.prepareChannelAndPlaylist(channel, httpClient, "key", 0, 100, 10);
 
@@ -171,8 +167,7 @@ class ChannelProcessingServiceImplTest {
 
     @Test
     void prepareChannelAndPlaylist_ShouldNotUpdateChannelTitle_WhenApiTitleIsBlank() throws Exception {
-        Channel channel = new Channel();
-        channel.setChannelId("UC123");
+        Channel channel = new Channel("UC123");
         channel.setTitle("Original Title");
 
         // API returns blank title (whitespace only)
@@ -189,7 +184,7 @@ class ChannelProcessingServiceImplTest {
 
         when(youtubeApiUsageService.hasSufficientQuota(anyLong(), anyLong())).thenReturn(true);
         when(httpClient.get(anyString(), anyMap(), any())).thenReturn(new HttpClient.Response(200, responseBody));
-        when(playlistRepository.findByPlaylistId("UU123")).thenReturn(Optional.of(new Playlist()));
+        when(playlistRepository.findByPlaylistId("UU123")).thenReturn(Optional.of(new Playlist("UU123")));
 
         service.prepareChannelAndPlaylist(channel, httpClient, "key", 0, 100, 10);
 
@@ -199,8 +194,7 @@ class ChannelProcessingServiceImplTest {
 
     @Test
     void prepareChannelAndPlaylist_ShouldNotUpdateChannelTitle_WhenTitleUnchanged() throws Exception {
-        Channel channel = new Channel();
-        channel.setChannelId("UC123");
+        Channel channel = new Channel("UC123");
         channel.setTitle("Same Title");
 
         String responseBody = """
@@ -216,7 +210,7 @@ class ChannelProcessingServiceImplTest {
 
         when(youtubeApiUsageService.hasSufficientQuota(anyLong(), anyLong())).thenReturn(true);
         when(httpClient.get(anyString(), anyMap(), any())).thenReturn(new HttpClient.Response(200, responseBody));
-        when(playlistRepository.findByPlaylistId("UU123")).thenReturn(Optional.of(new Playlist()));
+        when(playlistRepository.findByPlaylistId("UU123")).thenReturn(Optional.of(new Playlist("UU123")));
 
         service.prepareChannelAndPlaylist(channel, httpClient, "key", 0, 100, 10);
 
@@ -225,8 +219,7 @@ class ChannelProcessingServiceImplTest {
 
     @Test
     void prepareChannelAndPlaylist_ShouldThrow_WhenQuotaExceeded() {
-        Channel channel = new Channel();
-        channel.setChannelId("UC123");
+        Channel channel = new Channel("UC123");
         when(youtubeApiUsageService.hasSufficientQuota(anyLong(), anyLong())).thenReturn(false);
 
         assertThatThrownBy(() -> service.prepareChannelAndPlaylist(channel, httpClient, "key", 0, 100, 10))
@@ -235,8 +228,7 @@ class ChannelProcessingServiceImplTest {
 
     @Test
     void prepareChannelAndPlaylist_ShouldThrowAuthException_WhenApiKeyInvalid() throws Exception {
-        Channel channel = new Channel();
-        channel.setChannelId("UC123");
+        Channel channel = new Channel("UC123");
         when(youtubeApiUsageService.hasSufficientQuota(anyLong(), anyLong())).thenReturn(true);
         when(httpClient.get(anyString(), anyMap(), any()))
                 .thenThrow(new HttpException("GET", 400, "API key not valid"));
@@ -247,8 +239,7 @@ class ChannelProcessingServiceImplTest {
 
     @Test
     void prepareChannelAndPlaylist_ShouldThrowRequestException_WhenIoException() throws Exception {
-        Channel channel = new Channel();
-        channel.setChannelId("UC123");
+        Channel channel = new Channel("UC123");
         when(youtubeApiUsageService.hasSufficientQuota(anyLong(), anyLong())).thenReturn(true);
         when(httpClient.get(anyString(), anyMap(), any())).thenThrow(new IOException("Network error"));
 
@@ -258,8 +249,7 @@ class ChannelProcessingServiceImplTest {
 
     @Test
     void prepareChannelAndPlaylist_ShouldThrowRequestException_WhenResponseHasNoItems() throws Exception {
-        Channel channel = new Channel();
-        channel.setChannelId("UC123");
+        Channel channel = new Channel("UC123");
 
         when(youtubeApiUsageService.hasSufficientQuota(anyLong(), anyLong())).thenReturn(true);
         String responseBody = "{\"items\": []}";
@@ -272,8 +262,7 @@ class ChannelProcessingServiceImplTest {
 
     @Test
     void prepareChannelAndPlaylist_ShouldThrowRequestException_WhenResponseMissingUploadsId() throws Exception {
-        Channel channel = new Channel();
-        channel.setChannelId("UC123");
+        Channel channel = new Channel("UC123");
 
         when(youtubeApiUsageService.hasSufficientQuota(anyLong(), anyLong())).thenReturn(true);
         // uploads is missing
@@ -296,8 +285,7 @@ class ChannelProcessingServiceImplTest {
 
     @Test
     void prepareChannelAndPlaylist_ShouldThrowRequestException_WhenResponseMissingTitle() throws Exception {
-        Channel channel = new Channel();
-        channel.setChannelId("UC123");
+        Channel channel = new Channel("UC123");
 
         when(youtubeApiUsageService.hasSufficientQuota(anyLong(), anyLong())).thenReturn(true);
         // title is missing
@@ -320,8 +308,7 @@ class ChannelProcessingServiceImplTest {
 
     @Test
     void prepareChannelAndPlaylist_ShouldThrowRequestException_WhenHttpExceptionNotAuth() throws Exception {
-        Channel channel = new Channel();
-        channel.setChannelId("UC123");
+        Channel channel = new Channel("UC123");
 
         when(youtubeApiUsageService.hasSufficientQuota(anyLong(), anyLong())).thenReturn(true);
         when(httpClient.get(anyString(), anyMap(), any()))
@@ -334,8 +321,7 @@ class ChannelProcessingServiceImplTest {
 
     @Test
     void prepareChannelAndPlaylist_ShouldThrowRequestException_WhenHttpException400WithNullMessage() throws Exception {
-        Channel channel = new Channel();
-        channel.setChannelId("UC123");
+        Channel channel = new Channel("UC123");
 
         when(youtubeApiUsageService.hasSufficientQuota(anyLong(), anyLong())).thenReturn(true);
         HttpException mockException = org.mockito.Mockito.mock(HttpException.class);
@@ -352,8 +338,7 @@ class ChannelProcessingServiceImplTest {
 
     @Test
     void prepareChannelAndPlaylist_ShouldThrowRequestException_WhenHttpException500() throws Exception {
-        Channel channel = new Channel();
-        channel.setChannelId("UC123");
+        Channel channel = new Channel("UC123");
 
         when(youtubeApiUsageService.hasSufficientQuota(anyLong(), anyLong())).thenReturn(true);
         when(httpClient.get(anyString(), anyMap(), any()))
@@ -366,8 +351,7 @@ class ChannelProcessingServiceImplTest {
 
     @Test
     void prepareChannelAndPlaylist_ShouldThrowRequestException_WhenURISyntaxException() throws Exception {
-        Channel channel = new Channel();
-        channel.setChannelId("UC123");
+        Channel channel = new Channel("UC123");
 
         when(youtubeApiUsageService.hasSufficientQuota(anyLong(), anyLong())).thenReturn(true);
         when(httpClient.get(anyString(), anyMap(), any()))
@@ -380,8 +364,7 @@ class ChannelProcessingServiceImplTest {
 
     @Test
     void processPlaylistItems_ShouldProcessSinglePage() {
-        Playlist playlist = new Playlist();
-        playlist.setPlaylistId("UU123");
+        Playlist playlist = new Playlist("UU123");
 
         OffsetDateTime now = OffsetDateTime.now();
         PageProcessingResult pageResult = new PageProcessingResult(null, new PlaylistProcessingResult(), true, now);
@@ -398,8 +381,7 @@ class ChannelProcessingServiceImplTest {
 
     @Test
     void processPlaylistItems_ShouldLoopMultiplePages() {
-        Playlist playlist = new Playlist();
-        playlist.setPlaylistId("UU123");
+        Playlist playlist = new Playlist("UU123");
 
         PageProcessingResult page1 = new PageProcessingResult("token2", new PlaylistProcessingResult(), false, null);
         PageProcessingResult page2 = new PageProcessingResult(null, new PlaylistProcessingResult(), true, null);
@@ -416,8 +398,7 @@ class ChannelProcessingServiceImplTest {
 
     @Test
     void processPlaylistItems_ShouldRespectPublishedAfter() {
-        Playlist playlist = new Playlist();
-        playlist.setPlaylistId("UU123");
+        Playlist playlist = new Playlist("UU123");
         OffsetDateTime publishedAfter = OffsetDateTime.now().minusDays(1);
 
         PageProcessingResult pageResult = new PageProcessingResult(null, new PlaylistProcessingResult(), true, null);
@@ -431,8 +412,7 @@ class ChannelProcessingServiceImplTest {
 
     @Test
     void processPlaylistItems_ShouldUseRequestPublishedAfter_WhenLastProcessedAtIsNull() {
-        Playlist playlist = new Playlist();
-        playlist.setPlaylistId("UU123");
+        Playlist playlist = new Playlist("UU123");
         playlist.setProcessedAt(null); // effectivePublishedAfter starts as null
 
         OffsetDateTime requestPublishedAfter = OffsetDateTime.now().minusDays(1);
@@ -449,8 +429,7 @@ class ChannelProcessingServiceImplTest {
 
     @Test
     void processPlaylistItems_ShouldUseRequestPublishedAfter_WhenNewerThanLastProcessedAt() {
-        Playlist playlist = new Playlist();
-        playlist.setPlaylistId("UU123");
+        Playlist playlist = new Playlist("UU123");
         OffsetDateTime lastProcessedAt = OffsetDateTime.now().minusDays(10);
         playlist.setProcessedAt(lastProcessedAt);
 
@@ -467,8 +446,7 @@ class ChannelProcessingServiceImplTest {
 
     @Test
     void processPlaylistItems_ShouldUseLastProcessedAt_WhenRequestPublishedAfterIsOlder() {
-        Playlist playlist = new Playlist();
-        playlist.setPlaylistId("UU123");
+        Playlist playlist = new Playlist("UU123");
         OffsetDateTime lastProcessedAt = OffsetDateTime.now().minusDays(5);
         playlist.setProcessedAt(lastProcessedAt);
 
@@ -486,8 +464,7 @@ class ChannelProcessingServiceImplTest {
 
     @Test
     void processPlaylistItems_ShouldStopOnQuotaExceeded() {
-        Playlist playlist = new Playlist();
-        playlist.setPlaylistId("UU123");
+        Playlist playlist = new Playlist("UU123");
 
         when(pageProcessingService.processSinglePage(any(), any(), any(), any(), any(), anyLong(), anyLong(), anyLong()))
                 .thenThrow(new QuotaExceededException("Quota limit reached"));
@@ -498,8 +475,7 @@ class ChannelProcessingServiceImplTest {
 
     @Test
     void processPlaylistItems_ShouldClearToken_WhenNoNewItemsButFinished() {
-        Playlist playlist = new Playlist();
-        playlist.setPlaylistId("UU123");
+        Playlist playlist = new Playlist("UU123");
         playlist.setLastPageToken("oldToken");
         OffsetDateTime oldProcessedAt = OffsetDateTime.now().minusDays(5);
         playlist.setProcessedAt(oldProcessedAt);
@@ -517,8 +493,7 @@ class ChannelProcessingServiceImplTest {
 
     @Test
     void prepareChannelAndPlaylist_ShouldHandleInterruptedException() {
-        Channel channel = new Channel();
-        channel.setChannelId("UC123");
+        Channel channel = new Channel("UC123");
 
         when(youtubeApiUsageService.hasSufficientQuota(anyLong(), anyLong())).thenReturn(true);
 
@@ -534,8 +509,7 @@ class ChannelProcessingServiceImplTest {
 
     @Test
     void processPlaylistItems_ShouldPreserveNewestVideo_AcrossPages() {
-        Playlist playlist = new Playlist();
-        playlist.setPlaylistId("UU123");
+        Playlist playlist = new Playlist("UU123");
 
         OffsetDateTime newest = OffsetDateTime.now();
         PlaylistProcessingResult stats1 = new PlaylistProcessingResult();
@@ -558,8 +532,7 @@ class ChannelProcessingServiceImplTest {
 
     @Test
     void processPlaylistItems_ShouldWrapGenericException() {
-        Playlist playlist = new Playlist();
-        playlist.setPlaylistId("UU123");
+        Playlist playlist = new Playlist("UU123");
 
         when(pageProcessingService.processSinglePage(any(), any(), any(), any(), any(), anyLong(), anyLong(), anyLong()))
                 .thenThrow(new RuntimeException("Unexpected error"));
@@ -571,8 +544,7 @@ class ChannelProcessingServiceImplTest {
 
     @Test
     void processPlaylistItems_ShouldStop_WhenStopFetchingIsTrue_EvenIfTokenExists() {
-        Playlist playlist = new Playlist();
-        playlist.setPlaylistId("UU123");
+        Playlist playlist = new Playlist("UU123");
 
         // stopFetching = true, nextPageToken != null
         PageProcessingResult pageResult = new PageProcessingResult("nextToken", new PlaylistProcessingResult(), true, null);
@@ -587,8 +559,7 @@ class ChannelProcessingServiceImplTest {
 
     @Test
     void processPlaylistItems_ShouldStop_WhenNoNextPageToken_AndStopFetchingIsFalse() {
-        Playlist playlist = new Playlist();
-        playlist.setPlaylistId("UU123");
+        Playlist playlist = new Playlist("UU123");
 
         // stopFetching = false, nextPageToken = null
         PageProcessingResult pageResult = new PageProcessingResult(null, new PlaylistProcessingResult(), false, null);
@@ -603,8 +574,7 @@ class ChannelProcessingServiceImplTest {
 
     @Test
     void processPlaylistItems_ShouldFallbackToOldDate_WhenNewItemsHaveNoDate() {
-        Playlist playlist = new Playlist();
-        playlist.setPlaylistId("UU123");
+        Playlist playlist = new Playlist("UU123");
         playlist.setLastPageToken("oldToken");
         OffsetDateTime oldDate = OffsetDateTime.now().minusDays(10);
         playlist.setProcessedAt(oldDate);
@@ -625,14 +595,13 @@ class ChannelProcessingServiceImplTest {
 
     @Test
     void prepareChannelAndPlaylist_ShouldWait_WhenDelayIsPositive() throws Exception {
-        Channel channel = new Channel();
-        channel.setChannelId("UC123");
+        Channel channel = new Channel("UC123");
         channel.setTitle("Title");
 
         String responseBody = "{\"items\": [{\"contentDetails\": {\"relatedPlaylists\": {\"uploads\": \"UU123\"}}, \"snippet\": {\"title\": \"Title\"}}]}";
         when(youtubeApiUsageService.hasSufficientQuota(anyLong(), anyLong())).thenReturn(true);
         when(httpClient.get(anyString(), anyMap(), any())).thenReturn(new HttpClient.Response(200, responseBody));
-        when(playlistRepository.findByPlaylistId("UU123")).thenReturn(Optional.of(new Playlist()));
+        when(playlistRepository.findByPlaylistId("UU123")).thenReturn(Optional.of(new Playlist("PL123")));
 
         // Execute with 10ms delay to cover Thread.sleep branch
         service.prepareChannelAndPlaylist(channel, httpClient, "key", 10, 100, 10);

@@ -45,20 +45,18 @@ class TagTest {
     @SuppressWarnings("unused")
     void setUp() {
         tagName = "Test Tag";
-        tag = new Tag(tagName, new HashSet<>());
+        tag = new Tag(tagName);
+        tag.setItems(new HashSet<>());
     }
 
     @Test
     void testGettersAndSetters() {
-        Tag t = new Tag();
-        Long id = 1L;
+        Tag t = new Tag(tagName);
         Set<Item> items = new HashSet<>();
 
-        t.setId(id);
-        t.setName(tagName);
         t.setItems(items);
 
-        assertEquals(id, t.getId());
+        assertNull(t.getId(), "ID should be null before persisting to the database");
         assertEquals(tagName, t.getName());
         assertEquals(items, t.getItems());
     }
@@ -69,23 +67,32 @@ class TagTest {
         assertNotNull(t);
         assertNull(t.getId());
         assertNull(t.getName());
-        assertNull(t.getItems());
+        assertNotNull(t.getItems());
+        assertTrue(t.getItems().isEmpty());
     }
 
     @Test
-    void testAllArgsConstructor() {
+    void testBuilder() {
+        Long id = 1L;
         Set<Item> items = new HashSet<>();
-        Tag t = new Tag(tagName, items);
+        Tag t = Tag.builder()
+                .id(id)
+                .name(tagName)
+                .items(items)
+                .build();
 
         assertNotNull(t);
+        assertEquals(id, t.getId());
         assertEquals(tagName, t.getName());
         assertEquals(items, t.getItems());
     }
 
     @Test
     void testEqualsAndHashCode() {
-        Tag tag2 = new Tag(tagName, new HashSet<>()); // Same name, should be equal
-        Tag tag3 = new Tag("Another Tag", new HashSet<>()); // Different name, should not be equal
+        Tag tag2 = new Tag(tagName); // Same name, should be equal
+        tag2.setItems(new HashSet<>());
+        Tag tag3 = new Tag("Another Tag"); // Different name, should not be equal
+        tag3.setItems(new HashSet<>());
 
         // Test for equality
         assertEquals(tag, tag2);
@@ -102,8 +109,7 @@ class TagTest {
 
     @Test
     void testAddItem() {
-        Item item = new Item();
-        item.setVideoId("video123");
+        Item item = new Item("video123");
 
         // The set is initialized as empty in setUp, not null.
         assertNotNull(tag.getItems());
@@ -122,8 +128,7 @@ class TagTest {
 
     @Test
     void testRemoveItem() {
-        Item item = new Item();
-        item.setVideoId("video123");
+        Item item = new Item("video123");
 
         // Pre-set the tag on the item to stabilize its hashCode.
         item.setTag(tag);
@@ -143,18 +148,19 @@ class TagTest {
     @Test
     void testRemoveItemFromNullSet() {
         Tag t = new Tag();
-        Item item = new Item();
+        t.setItems(null); // Force items to be null to cover the missing branch
+        Item item = new Item("video123");
         // Should not throw a NullPointerException
         assertDoesNotThrow(() -> t.removeItem(item));
     }
 
     @Test
-    void testAddItemWhenItemsSetIsNull() {
-        Tag t = new Tag(); // items is null here
-        assertNull(t.getItems(), "Items collection should be null initially.");
+    void testAddItemToEmptySet() {
+        Tag t = new Tag(); // items is empty here
+        assertNotNull(t.getItems(), "Items collection should not be null initially.");
+        assertTrue(t.getItems().isEmpty(), "Items collection should be empty initially.");
 
-        Item item = new Item();
-        item.setVideoId("video123");
+        Item item = new Item("video123");
         // Pre-set the tag to stabilize hashCode.
         item.setTag(t);
 
@@ -163,5 +169,18 @@ class TagTest {
         assertNotNull(t.getItems(), "Items collection should be initialized after adding an item.");
         assertTrue(t.getItems().contains(item), "Item should be in the collection after being added.");
         assertEquals(t, item.getTag(), "Bidirectional relationship should be set.");
+    }
+
+    @Test
+    void testAddItemWhenItemsSetIsNull() {
+        Tag t = new Tag();
+        t.setItems(null); // Force items to be null to cover the missing branch
+
+        Item item = new Item("video123");
+        item.setTag(t);
+        t.addItem(item);
+
+        assertNotNull(t.getItems(), "Items collection should be initialized after adding an item.");
+        assertTrue(t.getItems().contains(item), "Item should be in the collection after being added.");
     }
 }

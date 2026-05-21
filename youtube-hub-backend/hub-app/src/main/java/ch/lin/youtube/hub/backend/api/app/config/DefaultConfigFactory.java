@@ -48,20 +48,22 @@ public class DefaultConfigFactory {
      * @return A new, fully populated {@link HubConfig} object.
      */
     public HubConfig create(HubDefaultProperties properties) {
-        return new HubConfig(properties.getName(),
-                properties.getEnabled(),
-                properties.getYoutubeApiKey(),
-                properties.getClientId(),
-                properties.getClientSecret(),
-                properties.getAutoStartFetchScheduler(),
-                properties.getSchedulerType(),
-                properties.getFixedRate(),
-                properties.getCronExpression(),
-                properties.getCronTimeZone(),
-                properties.getQuota(),
-                properties.getQuotaSafetyThreshold(),
-                properties.getApiCallDelay(),
-                properties.getActiveVideosSyncDays(),
-                properties.getMaxThumbnailRetries());
+        return HubConfig.builder()
+                .name(properties.getName())
+                .enabled(properties.getEnabled())
+                .youtubeApiKey(properties.getYoutubeApiKey())
+                .clientId(properties.getClientId())
+                .clientSecret(properties.getClientSecret())
+                .autoStartFetchScheduler(properties.getAutoStartFetchScheduler())
+                .schedulerType(properties.getSchedulerType())
+                .fixedRate(properties.getFixedRate())
+                .cronExpression(properties.getCronExpression())
+                .cronTimeZone(properties.getCronTimeZone())
+                .quota(properties.getQuota())
+                .quotaSafetyThreshold(properties.getQuotaSafetyThreshold())
+                .apiCallDelay(properties.getApiCallDelay())
+                .activeVideosSyncDays(properties.getActiveVideosSyncDays())
+                .maxThumbnailRetries(properties.getMaxThumbnailRetries())
+                .build();
     }
 }

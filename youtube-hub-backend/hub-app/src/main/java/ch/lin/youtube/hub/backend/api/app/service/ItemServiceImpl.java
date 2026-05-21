@@ -276,8 +276,7 @@ public class ItemServiceImpl implements ItemService {
                         .findFirst()
                         .orElseGet(() -> {
                             // Create a new DownloadInfo for manual/external downloads
-                            DownloadInfo newInfo = new DownloadInfo();
-                            newInfo.setItem(item);
+                            DownloadInfo newInfo = new DownloadInfo(item);
                             item.getDownloadInfos().add(newInfo);
                             return newInfo;
                         });

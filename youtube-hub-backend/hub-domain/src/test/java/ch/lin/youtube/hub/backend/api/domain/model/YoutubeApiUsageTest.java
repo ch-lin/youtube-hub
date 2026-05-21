@@ -38,20 +38,17 @@ class YoutubeApiUsageTest {
 
     @Test
     void testGettersAndSetters() {
-        YoutubeApiUsage usage = new YoutubeApiUsage();
-        Long id = 1L;
         LocalDate date = LocalDate.now();
+        YoutubeApiUsage usage = new YoutubeApiUsage(date);
         long requestCount = 10;
         long quotaUsed = 100;
         OffsetDateTime lastUpdated = OffsetDateTime.now();
 
-        usage.setId(id);
-        usage.setUsageDate(date);
         usage.setRequestCount(requestCount);
         usage.setQuotaUsed(quotaUsed);
         usage.setLastUpdated(lastUpdated);
 
-        assertEquals(id, usage.getId());
+        assertNull(usage.getId(), "ID should be null before persisting to the database");
         assertEquals(date, usage.getUsageDate());
         assertEquals(requestCount, usage.getRequestCount());
         assertEquals(quotaUsed, usage.getQuotaUsed());
@@ -70,15 +67,22 @@ class YoutubeApiUsageTest {
     }
 
     @Test
-    void testAllArgsConstructor() {
+    void testBuilder() {
+        Long id = 1L;
         LocalDate date = LocalDate.now();
         long requestCount = 10;
         long quotaUsed = 100;
         OffsetDateTime lastUpdated = OffsetDateTime.now();
 
-        YoutubeApiUsage usage = new YoutubeApiUsage(date, requestCount, quotaUsed, lastUpdated);
+        YoutubeApiUsage usage = YoutubeApiUsage.builder()
+                .id(id)
+                .usageDate(date)
+                .requestCount(requestCount)
+                .quotaUsed(quotaUsed)
+                .lastUpdated(lastUpdated)
+                .build();
 
-        assertNull(usage.getId()); // BaseEntity ID is not part of AllArgsConstructor
+        assertEquals(id, usage.getId());
         assertEquals(date, usage.getUsageDate());
         assertEquals(requestCount, usage.getRequestCount());
         assertEquals(quotaUsed, usage.getQuotaUsed());
@@ -90,14 +94,11 @@ class YoutubeApiUsageTest {
         LocalDate date1 = LocalDate.of(2023, 1, 1);
         LocalDate date2 = LocalDate.of(2023, 1, 2);
 
-        YoutubeApiUsage usage1 = new YoutubeApiUsage();
-        usage1.setUsageDate(date1);
+        YoutubeApiUsage usage1 = new YoutubeApiUsage(date1);
 
-        YoutubeApiUsage usage2 = new YoutubeApiUsage();
-        usage2.setUsageDate(date1); // Same date
+        YoutubeApiUsage usage2 = new YoutubeApiUsage(date1); // Same date
 
-        YoutubeApiUsage usage3 = new YoutubeApiUsage();
-        usage3.setUsageDate(date2); // Different date
+        YoutubeApiUsage usage3 = new YoutubeApiUsage(date2); // Different date
 
         // Test equality
         assertEquals(usage1, usage2);
@@ -114,8 +115,7 @@ class YoutubeApiUsageTest {
 
     @Test
     void testIncrement() {
-        YoutubeApiUsage usage = new YoutubeApiUsage();
-        usage.setUsageDate(LocalDate.now());
+        YoutubeApiUsage usage = new YoutubeApiUsage(LocalDate.now());
         usage.setRequestCount(5);
         usage.setQuotaUsed(50);
 

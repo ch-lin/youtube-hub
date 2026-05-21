@@ -143,19 +143,16 @@ class YoutubeHubServiceImplTest {
         String existingDownloadedUrl = "https://www.youtube.com/watch?v=existDown";
         String invalidUrl = "https://google.com";
 
-        Item itemNewStd = new Item();
-        itemNewStd.setVideoId("existNewStd");
+        Item itemNewStd = new Item("existNewStd");
         itemNewStd.setStatus(ProcessingStatus.NEW);
         itemNewStd.setLiveBroadcastContent(LiveBroadcastContent.NONE);
 
-        Item itemNewFuture = new Item();
-        itemNewFuture.setVideoId("existNewFuture");
+        Item itemNewFuture = new Item("existNewFuture");
         itemNewFuture.setStatus(ProcessingStatus.NEW);
         itemNewFuture.setLiveBroadcastContent(LiveBroadcastContent.UPCOMING);
         itemNewFuture.setScheduledStartTime(OffsetDateTime.now().plusDays(1));
 
-        Item itemDownloaded = new Item();
-        itemDownloaded.setVideoId("existDown");
+        Item itemDownloaded = new Item("existDown");
         itemDownloaded.setStatus(ProcessingStatus.DOWNLOADED);
 
         when(itemRepository.findByVideoId("new123")).thenReturn(Optional.empty());
@@ -198,8 +195,7 @@ class YoutubeHubServiceImplTest {
     void verifyNewItems_ShouldExcludeManuallyDownloadedItems() {
         // Test that items with MANUALLY_DOWNLOADED status should not be included in the undownloaded list
         String url = "https://www.youtube.com/watch?v=manual";
-        Item item = new Item();
-        item.setVideoId("manual");
+        Item item = new Item("manual");
         item.setStatus(ProcessingStatus.MANUALLY_DOWNLOADED);
 
         when(itemRepository.findByVideoId("manual")).thenReturn(Optional.of(item));
@@ -229,16 +225,14 @@ class YoutubeHubServiceImplTest {
 
         // Case 1: Past Live Stream (Should be processable)
         // Covers branch: scheduledStartTime != null AND isBefore(now) is true
-        Item itemPastLive = new Item();
-        itemPastLive.setVideoId("pastLive");
+        Item itemPastLive = new Item("pastLive");
         itemPastLive.setStatus(ProcessingStatus.NEW);
         itemPastLive.setLiveBroadcastContent(LiveBroadcastContent.LIVE);
         itemPastLive.setScheduledStartTime(OffsetDateTime.now().minusHours(1));
 
         // Case 2: Live Stream with Null Start Time (Should NOT be processable)
         // Covers branch: scheduledStartTime == null
-        Item itemNullTimeLive = new Item();
-        itemNullTimeLive.setVideoId("nullTimeLive");
+        Item itemNullTimeLive = new Item("nullTimeLive");
         itemNullTimeLive.setStatus(ProcessingStatus.NEW);
         itemNullTimeLive.setLiveBroadcastContent(LiveBroadcastContent.UPCOMING);
         itemNullTimeLive.setScheduledStartTime(null);
@@ -297,9 +291,9 @@ class YoutubeHubServiceImplTest {
     @Test
     @SuppressWarnings({"null", "unchecked"})
     void markAllManuallyDownloaded_ShouldUpdateItems() {
-        Item item1 = new Item();
+        Item item1 = new Item("v1");
         item1.setStatus(ProcessingStatus.NEW);
-        Item item2 = new Item();
+        Item item2 = new Item("v2");
         item2.setStatus(ProcessingStatus.NEW);
 
         when(itemRepository.findAll(any(Specification.class))).thenReturn(List.of(item1, item2));
@@ -329,7 +323,7 @@ class YoutubeHubServiceImplTest {
     @SuppressWarnings({"null", "unchecked"})
     void markAllManuallyDownloaded_ShouldHandleNullChannelIds() {
         // Test scenario: channelIds is null (applies to all channels)
-        Item item = new Item();
+        Item item = new Item("v1");
         item.setStatus(ProcessingStatus.NEW);
         when(itemRepository.findAll(any(Specification.class))).thenReturn(List.of(item));
 
@@ -344,7 +338,7 @@ class YoutubeHubServiceImplTest {
     @SuppressWarnings({"null", "unchecked"})
     void markAllManuallyDownloaded_ShouldHandleEmptyChannelIds() {
         // Test scenario: channelIds is an empty list (applies to all channels)
-        Item item = new Item();
+        Item item = new Item("v1");
         item.setStatus(ProcessingStatus.NEW);
         when(itemRepository.findAll(any(Specification.class))).thenReturn(List.of(item));
 
@@ -559,7 +553,7 @@ class YoutubeHubServiceImplTest {
 
     @Test
     void processJob_ShouldThrow_WhenNoApiKey() {
-        when(configsService.getResolvedConfig(null)).thenReturn(new HubConfig());
+        when(configsService.getResolvedConfig(null)).thenReturn(new HubConfig("default"));
 
         assertThatThrownBy(() -> service.processJob(null, null, null, null, false, null))
                 .isInstanceOf(InvalidRequestException.class)
@@ -568,20 +562,16 @@ class YoutubeHubServiceImplTest {
 
     @Test
     void processJob_ShouldProcessChannels_AndAggregateResults() {
-        HubConfig config = new HubConfig();
+        HubConfig config = new HubConfig("default");
         config.setYoutubeApiKey("test-key");
         when(configsService.getResolvedConfig(null)).thenReturn(config);
 
-        Channel channel1 = new Channel();
-        channel1.setChannelId("ch1");
-        Channel channel2 = new Channel();
-        channel2.setChannelId("ch2");
+        Channel channel1 = new Channel("ch1");
+        Channel channel2 = new Channel("ch2");
         when(channelRepository.findAll()).thenReturn(List.of(channel1, channel2));
 
-        Playlist playlist1 = new Playlist();
-        playlist1.setPlaylistId("pl1");
-        Playlist playlist2 = new Playlist();
-        playlist2.setPlaylistId("pl2");
+        Playlist playlist1 = new Playlist("pl1");
+        Playlist playlist2 = new Playlist("pl2");
 
         PlaylistProcessingResult result1 = new PlaylistProcessingResult();
         result1.setNewItemsCount(2);
@@ -614,14 +604,12 @@ class YoutubeHubServiceImplTest {
 
     @Test
     void processJob_ShouldStopEarly_WhenQuotaExceeded() {
-        HubConfig config = new HubConfig();
+        HubConfig config = new HubConfig("default");
         config.setYoutubeApiKey("test-key");
         when(configsService.getResolvedConfig(null)).thenReturn(config);
 
-        Channel channel1 = new Channel();
-        channel1.setChannelId("ch1");
-        Channel channel2 = new Channel();
-        channel2.setChannelId("ch2");
+        Channel channel1 = new Channel("ch1");
+        Channel channel2 = new Channel("ch2");
         when(channelRepository.findAll()).thenReturn(List.of(channel1, channel2));
 
         when(channelProcessingService.prepareChannelAndPlaylist(eq(channel1), any(), anyString(), anyLong(), anyLong(), anyLong()))
@@ -640,19 +628,16 @@ class YoutubeHubServiceImplTest {
 
     @Test
     void processJob_ShouldHandleChannelFailure_AndContinue() {
-        HubConfig config = new HubConfig();
+        HubConfig config = new HubConfig("default");
         config.setYoutubeApiKey("test-key");
         when(configsService.getResolvedConfig(null)).thenReturn(config);
 
-        Channel channel1 = new Channel();
-        channel1.setChannelId("ch1");
+        Channel channel1 = new Channel("ch1");
         channel1.setTitle("Channel 1");
-        Channel channel2 = new Channel();
-        channel2.setChannelId("ch2");
+        Channel channel2 = new Channel("ch2");
         when(channelRepository.findAll()).thenReturn(List.of(channel1, channel2));
 
-        Playlist playlist2 = new Playlist();
-        playlist2.setPlaylistId("pl2");
+        Playlist playlist2 = new Playlist("pl2");
 
         when(channelProcessingService.prepareChannelAndPlaylist(eq(channel1), any(), anyString(), anyLong(), anyLong(), anyLong()))
                 .thenThrow(new YoutubeApiRequestException("API Error"));
@@ -675,7 +660,7 @@ class YoutubeHubServiceImplTest {
 
     @Test
     void processJob_ShouldThrow_WhenHttpClientCloseFails() {
-        HubConfig config = new HubConfig();
+        HubConfig config = new HubConfig("default");
         config.setYoutubeApiKey("key");
         when(configsService.getResolvedConfig(null)).thenReturn(config);
 
@@ -693,8 +678,7 @@ class YoutubeHubServiceImplTest {
     @Test
     @SuppressWarnings("null")
     void downloadItems_ShouldCallDownloader() {
-        Item item = new Item();
-        item.setVideoId("vid1");
+        Item item = new Item("vid1");
         item.setTitle("Title");
         when(itemRepository.findAllByVideoIdIn(List.of("vid1"))).thenReturn(List.of(item));
 
@@ -714,7 +698,7 @@ class YoutubeHubServiceImplTest {
 
     @Test
     void processJob_ShouldUseProvidedApiKey_AndResolveConfigForQuota() {
-        HubConfig config = new HubConfig();
+        HubConfig config = new HubConfig("default");
         config.setQuota(10000L);
         config.setQuotaSafetyThreshold(500L);
         when(configsService.getResolvedConfig(null)).thenReturn(config);
@@ -732,8 +716,7 @@ class YoutubeHubServiceImplTest {
 
     @Test
     void processJob_ShouldThrow_WhenConfigNameMismatch() {
-        HubConfig config = new HubConfig();
-        config.setName("default");
+        HubConfig config = new HubConfig("default");
         when(configsService.getResolvedConfig("custom")).thenReturn(config);
 
         assertThatThrownBy(() -> service.processJob(null, "custom", null, null, false, null))
@@ -743,7 +726,7 @@ class YoutubeHubServiceImplTest {
 
     @Test
     void processJob_ShouldFilterByChannelIds() {
-        HubConfig config = new HubConfig();
+        HubConfig config = new HubConfig("default");
         config.setYoutubeApiKey("key");
         when(configsService.getResolvedConfig(null)).thenReturn(config);
 
@@ -764,7 +747,7 @@ class YoutubeHubServiceImplTest {
 
     @Test
     void processJob_ShouldHandleNegativeDelay() {
-        HubConfig config = new HubConfig();
+        HubConfig config = new HubConfig("default");
         config.setYoutubeApiKey("key");
         when(configsService.getResolvedConfig(null)).thenReturn(config);
 
@@ -779,7 +762,7 @@ class YoutubeHubServiceImplTest {
 
     @Test
     void processJob_ShouldResolveConfig_WhenApiKeyIsBlank() {
-        HubConfig config = new HubConfig();
+        HubConfig config = new HubConfig("default");
         config.setYoutubeApiKey("key");
         when(configsService.getResolvedConfig(null)).thenReturn(config);
 
@@ -796,7 +779,7 @@ class YoutubeHubServiceImplTest {
 
     @Test
     void processJob_ShouldResolveDefault_WhenConfigNameIsBlank() {
-        HubConfig config = new HubConfig();
+        HubConfig config = new HubConfig("default");
         config.setYoutubeApiKey("key");
         when(configsService.getResolvedConfig(null)).thenReturn(config);
 
@@ -813,8 +796,7 @@ class YoutubeHubServiceImplTest {
 
     @Test
     void processJob_ShouldSucceed_WhenConfigNameMatches() {
-        HubConfig config = new HubConfig();
-        config.setName("custom");
+        HubConfig config = new HubConfig("custom");
         config.setYoutubeApiKey("key");
         when(configsService.getResolvedConfig("custom")).thenReturn(config);
 
@@ -831,7 +813,7 @@ class YoutubeHubServiceImplTest {
 
     @Test
     void processJob_ShouldThrow_WhenResolvedApiKeyIsBlank() {
-        HubConfig config = new HubConfig();
+        HubConfig config = new HubConfig("default");
         config.setYoutubeApiKey("   ");
         when(configsService.getResolvedConfig(null)).thenReturn(config);
 
@@ -842,7 +824,7 @@ class YoutubeHubServiceImplTest {
 
     @Test
     void processJob_ShouldFetchAllChannels_WhenChannelIdsIsEmpty() {
-        HubConfig config = new HubConfig();
+        HubConfig config = new HubConfig("default");
         config.setYoutubeApiKey("key");
         when(configsService.getResolvedConfig(null)).thenReturn(config);
 
@@ -863,8 +845,7 @@ class YoutubeHubServiceImplTest {
     @Test
     @SuppressWarnings({"null"})
     void downloadItems_ShouldWarn_WhenSomeItemsNotFound() {
-        Item item1 = new Item();
-        item1.setVideoId("v1");
+        Item item1 = new Item("v1");
         item1.setTitle("V1");
 
         // Request v1 and v2, but only v1 exists
@@ -886,8 +867,7 @@ class YoutubeHubServiceImplTest {
 
     @Test
     void downloadItems_ShouldHandleNullConfigName() {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         when(itemRepository.findAllByVideoIdIn(List.of("v1"))).thenReturn(List.of(item));
 
         try (MockedConstruction<HttpClient> mocked = mockConstruction(HttpClient.class,
@@ -922,8 +902,7 @@ class YoutubeHubServiceImplTest {
     @SuppressWarnings({"null"})
     void downloadItems_ShouldHandleTrailingSlashInUrl() {
         ReflectionTestUtils.setField(service, "downloaderServiceUrl", "http://localhost:8081/");
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         when(itemRepository.findAllByVideoIdIn(List.of("v1"))).thenReturn(List.of(item));
 
         try (MockedConstruction<HttpClient> mocked = mockConstruction(HttpClient.class,
@@ -940,8 +919,7 @@ class YoutubeHubServiceImplTest {
 
     @Test
     void downloadItems_ShouldIncludeAuthHeader() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         when(itemRepository.findAllByVideoIdIn(List.of("v1"))).thenReturn(List.of(item));
 
         try (MockedConstruction<HttpClient> mocked = mockConstruction(HttpClient.class,
@@ -962,8 +940,7 @@ class YoutubeHubServiceImplTest {
 
     @Test
     void downloadItems_ShouldThrow_WhenResponseDataInvalid() {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         when(itemRepository.findAllByVideoIdIn(List.of("v1"))).thenReturn(List.of(item));
 
         // Case 1: Missing data node
@@ -992,8 +969,7 @@ class YoutubeHubServiceImplTest {
     @Test
     @SuppressWarnings({"null", "unchecked"})
     void downloadItems_ShouldSkipInvalidTasks() {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         when(itemRepository.findAllByVideoIdIn(List.of("v1"))).thenReturn(List.of(item));
 
         String responseBody = "{\"data\": ["
@@ -1026,8 +1002,7 @@ class YoutubeHubServiceImplTest {
 
     @Test
     void downloadItems_ShouldHandleExceptions() {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         when(itemRepository.findAllByVideoIdIn(List.of("v1"))).thenReturn(List.of(item));
 
         // Case 1: IOException
@@ -1050,8 +1025,7 @@ class YoutubeHubServiceImplTest {
 
     @Test
     void downloadItems_ShouldNotIncludeAuthHeader_WhenBlank() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         when(itemRepository.findAllByVideoIdIn(List.of("v1"))).thenReturn(List.of(item));
 
         try (MockedConstruction<HttpClient> mocked = mockConstruction(HttpClient.class,
@@ -1072,7 +1046,7 @@ class YoutubeHubServiceImplTest {
 
     @Test
     void syncActiveVideosStatistics_ShouldReturnZero_WhenNoActiveItemsFound() {
-        when(configsService.getResolvedConfig(null)).thenReturn(new HubConfig());
+        when(configsService.getResolvedConfig(null)).thenReturn(new HubConfig("default"));
         when(itemRepository.findAllByVideoPublishedAtAfter(any(OffsetDateTime.class)))
                 .thenReturn(Collections.emptyList());
 
@@ -1085,11 +1059,11 @@ class YoutubeHubServiceImplTest {
     void syncActiveVideosStatistics_ShouldSyncInBatches() throws Exception {
         List<Item> items = new ArrayList<>();
         for (int i = 0; i < 60; i++) {
-            items.add(new Item()); // 60 items to test batching of 50 and 10
+            items.add(new Item("vid" + i)); // 60 items to test batching of 50 and 10
         }
         when(itemRepository.findAllByVideoPublishedAtAfter(any(OffsetDateTime.class))).thenReturn(items);
 
-        HubConfig config = new HubConfig();
+        HubConfig config = new HubConfig("default");
         config.setYoutubeApiKey("test-key");
         config.setQuota(10000L);
         config.setQuotaSafetyThreshold(500L);
@@ -1113,11 +1087,11 @@ class YoutubeHubServiceImplTest {
     void syncActiveVideosStatistics_ShouldContinue_WhenApiRequestExceptionOccurs() throws Exception {
         List<Item> items = new ArrayList<>();
         for (int i = 0; i < 60; i++) {
-            items.add(new Item());
+            items.add(new Item("vid" + i));
         }
         when(itemRepository.findAllByVideoPublishedAtAfter(any(OffsetDateTime.class))).thenReturn(items);
 
-        HubConfig config = new HubConfig();
+        HubConfig config = new HubConfig("default");
         config.setYoutubeApiKey("test-key");
         when(configsService.getResolvedConfig(null)).thenReturn(config);
 
@@ -1139,11 +1113,11 @@ class YoutubeHubServiceImplTest {
     void syncActiveVideosStatistics_ShouldBreak_WhenQuotaExceededOccurs() throws Exception {
         List<Item> items = new ArrayList<>();
         for (int i = 0; i < 60; i++) {
-            items.add(new Item());
+            items.add(new Item("vid" + i));
         }
         when(itemRepository.findAllByVideoPublishedAtAfter(any(OffsetDateTime.class))).thenReturn(items);
 
-        HubConfig config = new HubConfig();
+        HubConfig config = new HubConfig("default");
         config.setYoutubeApiKey("test-key");
         when(configsService.getResolvedConfig(null)).thenReturn(config);
 
@@ -1162,9 +1136,9 @@ class YoutubeHubServiceImplTest {
 
     @Test
     void syncActiveVideosStatistics_ShouldRestoreInterruptStatus_WhenInterruptedExceptionOccurs() throws Exception {
-        List<Item> items = List.of(new Item());
+        List<Item> items = List.of(new Item("v1"));
         when(itemRepository.findAllByVideoPublishedAtAfter(any(OffsetDateTime.class))).thenReturn(items);
-        when(configsService.getResolvedConfig(null)).thenReturn(new HubConfig());
+        when(configsService.getResolvedConfig(null)).thenReturn(new HubConfig("default"));
         when(videoFetchService.syncStatisticsForItems(any(), any(), anyList(), anyLong(), anyLong(), anyLong()))
                 .thenThrow(new InterruptedException("Thread interrupted"));
 
@@ -1177,9 +1151,9 @@ class YoutubeHubServiceImplTest {
 
     @Test
     void syncActiveVideosStatistics_ShouldHandleIOException_FromHttpClient() {
-        List<Item> items = List.of(new Item());
+        List<Item> items = List.of(new Item("v1"));
         when(itemRepository.findAllByVideoPublishedAtAfter(any(OffsetDateTime.class))).thenReturn(items);
-        when(configsService.getResolvedConfig(null)).thenReturn(new HubConfig());
+        when(configsService.getResolvedConfig(null)).thenReturn(new HubConfig("default"));
 
         try (MockedConstruction<HttpClient> mocked = mockConstruction(HttpClient.class, (mock, context) -> {
             doThrow(new IOException("Close failed")).when(mock).close();
@@ -1192,12 +1166,12 @@ class YoutubeHubServiceImplTest {
 
     @Test
     void syncActiveVideosStatistics_ShouldFilterByChannelIds_WhenProvided() throws Exception {
-        List<Item> items = List.of(new Item());
+        List<Item> items = List.of(new Item("v1"));
         List<String> channelIds = List.of("ch1");
         when(itemRepository.findAllByVideoPublishedAtAfterAndPlaylistChannelChannelIdIn(any(OffsetDateTime.class), eq(channelIds)))
                 .thenReturn(items);
 
-        HubConfig config = new HubConfig();
+        HubConfig config = new HubConfig("default");
         config.setYoutubeApiKey("test-key");
         when(configsService.getResolvedConfig(null)).thenReturn(config);
         when(videoFetchService.syncStatisticsForItems(any(), anyString(), anyList(), anyLong(), anyLong(), anyLong())).thenReturn(1);
@@ -1211,11 +1185,11 @@ class YoutubeHubServiceImplTest {
 
     @Test
     void syncActiveVideosStatistics_ShouldNotFilter_WhenChannelIdsEmpty() throws Exception {
-        List<Item> items = List.of(new Item());
+        List<Item> items = List.of(new Item("v1"));
         // Empty list should trigger the default non-filtered query
         when(itemRepository.findAllByVideoPublishedAtAfter(any(OffsetDateTime.class))).thenReturn(items);
 
-        HubConfig config = new HubConfig();
+        HubConfig config = new HubConfig("default");
         config.setYoutubeApiKey("test-key");
         when(configsService.getResolvedConfig(null)).thenReturn(config);
         when(videoFetchService.syncStatisticsForItems(any(), anyString(), anyList(), anyLong(), anyLong(), anyLong())).thenReturn(1);
@@ -1297,7 +1271,7 @@ class YoutubeHubServiceImplTest {
 
         @Test
         void syncMissingThumbnailsBackground_ShouldBreak_WhenNoPendingItems() {
-            HubConfig config = new HubConfig();
+            HubConfig config = new HubConfig("default");
             when(configsService.getResolvedConfig(null)).thenReturn(config);
 
             when(itemRepository.findPendingThumbnailsWithNullsFirst(anyList(), any(PageRequest.class)))
@@ -1311,12 +1285,11 @@ class YoutubeHubServiceImplTest {
 
         @Test
         void syncMissingThumbnailsBackground_ShouldProcessItems_AndBreakWhenFinished() {
-            HubConfig config = new HubConfig();
+            HubConfig config = new HubConfig("default");
             config.setApiCallDelay(0L); // Avoid actual sleep to prevent slowing down the test
             when(configsService.getResolvedConfig(null)).thenReturn(config);
 
-            Item item = new Item();
-            item.setVideoId("v1");
+            Item item = new Item("v1");
             item.setThumbnailStatus(ThumbnailStatus.PENDING);
 
             // First page returns 1 item, second page returns empty to end the loop
@@ -1338,12 +1311,11 @@ class YoutubeHubServiceImplTest {
 
         @Test
         void syncMissingThumbnailsBackground_ShouldBreakEarly_WhenNoProgressMade() {
-            HubConfig config = new HubConfig();
+            HubConfig config = new HubConfig("default");
             config.setApiCallDelay(0L);
             when(configsService.getResolvedConfig(null)).thenReturn(config);
 
-            Item item = new Item();
-            item.setVideoId("v1");
+            Item item = new Item("v1");
             item.setThumbnailStatus(ThumbnailStatus.PENDING); // Status remains unchanged
 
             when(itemRepository.findPendingThumbnailsWithNullsFirst(anyList(), any(PageRequest.class)))
@@ -1368,11 +1340,11 @@ class YoutubeHubServiceImplTest {
 
         @Test
         void syncMissingThumbnailsBackground_ShouldRestoreInterruptFlag_WhenInterrupted() {
-            HubConfig config = new HubConfig();
+            HubConfig config = new HubConfig("default");
             config.setApiCallDelay(100L); // Must be > 0 to trigger Thread.sleep in delaySync
             when(configsService.getResolvedConfig(null)).thenReturn(config);
 
-            Item item = new Item();
+            Item item = new Item("v1");
             item.setThumbnailStatus(ThumbnailStatus.DOWNLOADED); // Force progressMade = true to enter sleep
             when(itemRepository.findPendingThumbnailsWithNullsFirst(anyList(), any(PageRequest.class)))
                     .thenReturn(new PageImpl<>(Objects.requireNonNull(List.of(item))));
@@ -1385,12 +1357,11 @@ class YoutubeHubServiceImplTest {
 
         @Test
         void syncMissingThumbnailsBackground_ShouldMakeProgress_WhenStatusIsUnavailable() {
-            HubConfig config = new HubConfig();
+            HubConfig config = new HubConfig("default");
             config.setApiCallDelay(0L);
             when(configsService.getResolvedConfig(null)).thenReturn(config);
 
-            Item item = new Item();
-            item.setVideoId("v1");
+            Item item = new Item("v1");
             item.setThumbnailStatus(ThumbnailStatus.PENDING);
 
             when(itemRepository.findPendingThumbnailsWithNullsFirst(anyList(), any(PageRequest.class)))
@@ -1411,12 +1382,11 @@ class YoutubeHubServiceImplTest {
 
         @Test
         void syncMissingThumbnailsBackground_ShouldDelay_WhenApiCallDelayIsPositive() {
-            HubConfig config = new HubConfig();
+            HubConfig config = new HubConfig("default");
             config.setApiCallDelay(1L); // Set a delay > 0 to properly cover Thread.sleep()
             when(configsService.getResolvedConfig(null)).thenReturn(config);
 
-            Item item = new Item();
-            item.setVideoId("v1");
+            Item item = new Item("v1");
             item.setThumbnailStatus(ThumbnailStatus.PENDING);
 
             when(itemRepository.findPendingThumbnailsWithNullsFirst(anyList(), any(PageRequest.class)))

@@ -44,24 +44,24 @@ class HubConfigTest {
     }
 
     @Test
-    void testAllArgsConstructor_ShouldSetAllFields() {
-        HubConfig config = new HubConfig(
-                "test-config",
-                true,
-                "api-key",
-                "client-id",
-                "client-secret",
-                true,
-                SchedulerType.CRON,
-                3600000L,
-                "0 0 * * * *",
-                "UTC",
-                50000L,
-                1000L,
-                200L,
-                45,
-                5
-        );
+    void testBuilder_ShouldSetAllFields() {
+        HubConfig config = HubConfig.builder()
+                .name("test-config")
+                .enabled(true)
+                .youtubeApiKey("api-key")
+                .clientId("client-id")
+                .clientSecret("client-secret")
+                .autoStartFetchScheduler(true)
+                .schedulerType(SchedulerType.CRON)
+                .fixedRate(3600000L)
+                .cronExpression("0 0 * * * *")
+                .cronTimeZone("UTC")
+                .quota(50000L)
+                .quotaSafetyThreshold(1000L)
+                .apiCallDelay(200L)
+                .activeVideosSyncDays(45)
+                .maxThumbnailRetries(5)
+                .build();
 
         assertThat(config.getName()).isEqualTo("test-config");
         assertThat(config.getEnabled()).isTrue();
@@ -82,8 +82,7 @@ class HubConfigTest {
 
     @Test
     void testSettersAndGetters_ShouldWorkForNewFields() {
-        HubConfig config = new HubConfig();
-        config.setName("new-name");
+        HubConfig config = new HubConfig("new-name");
         config.setAutoStartFetchScheduler(true);
         config.setSchedulerType(SchedulerType.FIXED_RATE);
         config.setFixedRate(1000L);
@@ -110,9 +109,27 @@ class HubConfigTest {
 
     @Test
     void testEqualsAndHashCode_ShouldIncludeNewFields() {
-        HubConfig config1 = new HubConfig("cfg", true, "k", "i", "s", true, SchedulerType.CRON, 100L, "cron", "UTC", 10000L, 500L, 100L, 30, 3);
-        HubConfig config2 = new HubConfig("cfg", true, "k", "i", "s", true, SchedulerType.CRON, 100L, "cron", "UTC", 10000L, 500L, 100L, 30, 3);
-        HubConfig config3 = new HubConfig("cfg", true, "k", "i", "s", false, SchedulerType.CRON, 100L, "cron", "UTC", 10000L, 500L, 100L, 30, 3); // Different autoStart
+        HubConfig config1 = HubConfig.builder()
+                .name("cfg").enabled(true).youtubeApiKey("k").clientId("i").clientSecret("s")
+                .autoStartFetchScheduler(true).schedulerType(SchedulerType.CRON).fixedRate(100L)
+                .cronExpression("cron").cronTimeZone("UTC").quota(10000L).quotaSafetyThreshold(500L)
+                .apiCallDelay(100L).activeVideosSyncDays(30).maxThumbnailRetries(3)
+                .build();
+
+        HubConfig config2 = HubConfig.builder()
+                .name("cfg").enabled(true).youtubeApiKey("k").clientId("i").clientSecret("s")
+                .autoStartFetchScheduler(true).schedulerType(SchedulerType.CRON).fixedRate(100L)
+                .cronExpression("cron").cronTimeZone("UTC").quota(10000L).quotaSafetyThreshold(500L)
+                .apiCallDelay(100L).activeVideosSyncDays(30).maxThumbnailRetries(3)
+                .build();
+
+        HubConfig config3 = HubConfig.builder()
+                .name("cfg").enabled(true).youtubeApiKey("k").clientId("i").clientSecret("s")
+                .autoStartFetchScheduler(false) // Different autoStart
+                .schedulerType(SchedulerType.CRON).fixedRate(100L)
+                .cronExpression("cron").cronTimeZone("UTC").quota(10000L).quotaSafetyThreshold(500L)
+                .apiCallDelay(100L).activeVideosSyncDays(30).maxThumbnailRetries(3)
+                .build();
 
         assertThat(config1).isEqualTo(config2);
         assertThat(config1.hashCode()).isEqualTo(config2.hashCode());

@@ -66,8 +66,7 @@ class TagServiceImplTest {
 
     @Test
     void getAllTags_ShouldReturnAllTags() {
-        Tag tag = new Tag();
-        tag.setName("test");
+        Tag tag = new Tag("test");
         when(tagRepository.findAll()).thenReturn(List.of(tag));
 
         List<Tag> result = tagService.getAllTags();
@@ -103,7 +102,7 @@ class TagServiceImplTest {
     @Test
     void createTag_ShouldThrow_WhenTagExists() {
         String tagName = "existing";
-        when(tagRepository.findByName(tagName)).thenReturn(Optional.of(new Tag()));
+        when(tagRepository.findByName(tagName)).thenReturn(Optional.of(new Tag(tagName)));
 
         assertThatThrownBy(() -> tagService.createTag(tagName))
                 .isInstanceOf(TagAlreadyExistsException.class)
@@ -113,8 +112,7 @@ class TagServiceImplTest {
     @Test
     void deleteTagByName_ShouldDelete_WhenFound() {
         String tagName = "existing";
-        Tag tag = new Tag();
-        tag.setName(tagName);
+        Tag tag = new Tag(tagName);
         when(tagRepository.findByName(tagName)).thenReturn(Optional.of(tag));
 
         tagService.deleteTagByName(tagName);

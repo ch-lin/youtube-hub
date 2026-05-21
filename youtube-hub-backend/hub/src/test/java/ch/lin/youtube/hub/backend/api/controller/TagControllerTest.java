@@ -58,8 +58,7 @@ class TagControllerTest {
 
     @Test
     void getAllTags_ShouldReturnTags() {
-        Tag tag = new Tag();
-        tag.setName("test");
+        Tag tag = new Tag("test");
         when(tagService.getAllTags()).thenReturn(List.of(tag));
 
         ResponseEntity<List<TagResponse>> response = tagController.getAllTags();
@@ -76,8 +75,7 @@ class TagControllerTest {
         CreateTagRequest request = new CreateTagRequest();
         request.setName("new-tag");
 
-        Tag createdTag = new Tag();
-        createdTag.setName("new-tag");
+        Tag createdTag = new Tag("new-tag");
         when(tagService.createTag("new-tag")).thenReturn(createdTag);
 
         ResponseEntity<TagResponse> response = tagController.createTag(request);

@@ -68,8 +68,7 @@ public class YoutubeApiUsageServiceImpl implements YoutubeApiUsageService {
         LocalDate today = YoutubeApiUsage.getCurrentQuotaDate();
         YoutubeApiUsage usage = youtubeApiUsageRepository.findByUsageDate(today)
                 .orElseGet(() -> {
-                    YoutubeApiUsage newUsage = new YoutubeApiUsage();
-                    newUsage.setUsageDate(today);
+                    YoutubeApiUsage newUsage = new YoutubeApiUsage(today);
                     return newUsage;
                 });
         usage.increment(cost);

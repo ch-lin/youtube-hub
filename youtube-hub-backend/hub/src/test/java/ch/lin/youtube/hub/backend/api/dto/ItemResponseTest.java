@@ -37,16 +37,13 @@ class ItemResponseTest {
 
     @Test
     void itemResponse_ShouldMapFromEntity() {
-        Channel channel = new Channel();
-        channel.setChannelId("ch1");
+        Channel channel = new Channel("ch1");
         channel.setTitle("Test Channel");
 
-        Playlist playlist = new Playlist();
-        playlist.setPlaylistId("pl1");
+        Playlist playlist = new Playlist("pl1");
         playlist.setChannel(channel);
 
-        Item item = new Item();
-        item.setVideoId("vid1");
+        Item item = new Item("vid1");
         item.setTitle("Test Video");
         item.setKind("youtube#video");
         item.setVideoPublishedAt(OffsetDateTime.now());
@@ -66,8 +63,7 @@ class ItemResponseTest {
 
     @Test
     void itemResponse_ShouldMapFromEntity_WhenPlaylistIsNull() {
-        Item item = new Item();
-        item.setVideoId("vid1");
+        Item item = new Item("vid1");
         item.setPlaylist(null);
 
         ItemResponse response = new ItemResponse(item, null);
@@ -80,12 +76,10 @@ class ItemResponseTest {
 
     @Test
     void itemResponse_ShouldMapFromEntity_WhenChannelIsNull() {
-        Playlist playlist = new Playlist();
-        playlist.setPlaylistId("pl1");
+        Playlist playlist = new Playlist("pl1");
         playlist.setChannel(null);
 
-        Item item = new Item();
-        item.setVideoId("vid1");
+        Item item = new Item("vid1");
         item.setPlaylist(playlist);
 
         ItemResponse response = new ItemResponse(item, null);

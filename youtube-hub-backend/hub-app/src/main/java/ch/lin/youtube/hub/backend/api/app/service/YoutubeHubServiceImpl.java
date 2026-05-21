@@ -482,9 +482,8 @@ public class YoutubeHubServiceImpl implements YoutubeHubService {
                     Item item = itemMap.get(videoId);
 
                     if (item != null && taskId != null && !taskId.isBlank()) {
-                        DownloadInfo downloadInfo = new DownloadInfo();
+                        DownloadInfo downloadInfo = new DownloadInfo(item);
                         downloadInfo.setDownloadTaskId(taskId);
-                        downloadInfo.setItem(item);
                         newDownloadInfos.add(downloadInfo);
                     }
                 }

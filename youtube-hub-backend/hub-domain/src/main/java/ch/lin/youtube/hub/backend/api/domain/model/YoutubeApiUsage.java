@@ -27,6 +27,9 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 
+import org.hibernate.annotations.ColumnDefault;
+
+import ch.lin.platform.domain.model.BaseEntity;
 import static ch.lin.youtube.hub.backend.api.domain.model.YoutubeApiUsage.TABLE_NAME;
 import static ch.lin.youtube.hub.backend.api.domain.model.YoutubeApiUsage.USAGE_DATE_COLUMN;
 import jakarta.persistence.Column;
@@ -35,32 +38,39 @@ import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import jakarta.validation.constraints.NotNull;
+import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 
 /**
  * Represents the daily usage statistics of the YouTube Data API. This entity
  * tracks the number of requests and estimated quota usage per day.
  */
+@Entity
 @Table(name = TABLE_NAME, indexes = {
-    @Index(name = BaseEntity.ID_INDEX, columnList = BaseEntity.ID_COLUMN),
+    @Index(name = YoutubeApiUsage.ID_INDEX, columnList = BaseEntity.ID_COLUMN),
     @Index(name = YoutubeApiUsage.USAGE_DATE_INDEX, columnList = USAGE_DATE_COLUMN)}, uniqueConstraints = {
     @UniqueConstraint(columnNames = USAGE_DATE_COLUMN)})
-@Entity
 @Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
 @EqualsAndHashCode(of = {"usageDate"}, callSuper = false)
+@SuperBuilder(toBuilder = true)
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class YoutubeApiUsage extends BaseEntity {
 
     /**
      * The name of the api usage table in the database.
      */
     public static final String TABLE_NAME = "api_usage";
+
+    /**
+     * The name of the index for the ID column.
+     */
+    public static final String ID_INDEX = "api_usage_id_index";
 
     /**
      * The name of the usage date column in the database.
@@ -94,16 +104,6 @@ public class YoutubeApiUsage extends BaseEntity {
     public static final ZoneId YOUTUBE_QUOTA_ZONE = ZoneId.of("America/Los_Angeles");
 
     /**
-     * Helper method to get the current date in the YouTube quota time zone. Use
-     * this method to determine the 'usageDate' for the current request.
-     *
-     * @return The current LocalDate in Pacific Time.
-     */
-    public static LocalDate getCurrentQuotaDate() {
-        return LocalDate.now(YOUTUBE_QUOTA_ZONE);
-    }
-
-    /**
      * The date for which the usage is recorded. YouTube quotas typically reset
      * at midnight Pacific Time.
      */
@@ -114,22 +114,49 @@ public class YoutubeApiUsage extends BaseEntity {
     /**
      * The total number of API requests made on this date.
      */
-    @Column(name = YoutubeApiUsage.REQUEST_COUNT_COLUMN)
-    private long requestCount;
+    @ColumnDefault("0")
+    @Column(name = YoutubeApiUsage.REQUEST_COUNT_COLUMN, nullable = false)
+    @Setter
+    @lombok.Builder.Default
+    private long requestCount = 0L;
 
     /**
      * The estimated amount of quota used on this date. Different API calls
      * consume different amounts of quota (e.g., search costs 100, list costs
      * 1).
      */
-    @Column(name = YoutubeApiUsage.QUOTA_USED_COLUMN)
-    private long quotaUsed;
+    @ColumnDefault("0")
+    @Column(name = YoutubeApiUsage.QUOTA_USED_COLUMN, nullable = false)
+    @Setter
+    @lombok.Builder.Default
+    private long quotaUsed = 0L;
 
     /**
      * The timestamp of the last API request made on this date.
      */
     @Column(name = YoutubeApiUsage.LAST_UPDATED_COLUMN, columnDefinition = "TIMESTAMP")
+    @Setter
     private OffsetDateTime lastUpdated;
+
+    /**
+     * Creates a new YoutubeApiUsage with the specified date.
+     *
+     * @param usageDate The unique usage date.
+     */
+    public YoutubeApiUsage(LocalDate usageDate) {
+        this();
+        this.usageDate = usageDate;
+    }
+
+    /**
+     * Helper method to get the current date in the YouTube quota time zone. Use
+     * this method to determine the 'usageDate' for the current request.
+     *
+     * @return The current LocalDate in Pacific Time.
+     */
+    public static LocalDate getCurrentQuotaDate() {
+        return LocalDate.now(YOUTUBE_QUOTA_ZONE);
+    }
 
     /**
      * Increments the request count and quota usage for a new request.

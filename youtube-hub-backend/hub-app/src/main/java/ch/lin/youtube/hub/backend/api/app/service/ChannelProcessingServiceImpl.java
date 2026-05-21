@@ -112,11 +112,10 @@ public class ChannelProcessingServiceImpl implements ChannelProcessingService {
         return playlistRepository.findByPlaylistId(uploadsPlaylistId)
                 .orElseGet(() -> {
                     logger.info("  -> Uploads playlist with ID {} not found in DB. Creating it.", uploadsPlaylistId);
-                    Playlist newPlaylist = new Playlist();
-                    newPlaylist.setPlaylistId(uploadsPlaylistId);
+                    Playlist newPlaylist = new Playlist(uploadsPlaylistId);
                     newPlaylist.setTitle("Uploads from " + channel.getTitle());
                     newPlaylist.setChannel(channel);
-                    return playlistRepository.save(newPlaylist);
+                    return playlistRepository.save(Objects.requireNonNull(newPlaylist));
                 });
     }
 

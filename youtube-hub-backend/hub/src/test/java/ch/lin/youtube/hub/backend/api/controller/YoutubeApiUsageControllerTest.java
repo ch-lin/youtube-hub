@@ -59,8 +59,7 @@ class YoutubeApiUsageControllerTest {
     void getUsageHistory_ShouldReturnList() {
         LocalDate start = LocalDate.of(2023, 1, 1);
         LocalDate end = LocalDate.of(2023, 1, 31);
-        YoutubeApiUsage usage = new YoutubeApiUsage();
-        usage.setUsageDate(start);
+        YoutubeApiUsage usage = new YoutubeApiUsage(start);
 
         when(youtubeApiUsageService.getUsageHistory(start, end)).thenReturn(List.of(usage));
 
@@ -76,7 +75,7 @@ class YoutubeApiUsageControllerTest {
 
     @Test
     void getUsageHistory_ShouldHandleNullDates() {
-        YoutubeApiUsage usage = new YoutubeApiUsage();
+        YoutubeApiUsage usage = new YoutubeApiUsage(LocalDate.now());
         when(youtubeApiUsageService.getUsageHistory(null, null)).thenReturn(List.of(usage));
 
         ResponseEntity<List<YoutubeApiUsage>> response = controller.getUsageHistory(null, null);

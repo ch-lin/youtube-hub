@@ -83,7 +83,7 @@ class ThumbnailServiceImplTest {
     void setUp() {
         service = new ThumbnailServiceImpl(itemRepository, configsService, storageService);
 
-        lenient().when(configsService.getResolvedConfig(null)).thenReturn(new HubConfig());
+        lenient().when(configsService.getResolvedConfig(null)).thenReturn(new HubConfig("default"));
 
         // Inject the mocked HttpClient to prevent real network calls
         ReflectionTestUtils.setField(Objects.requireNonNull(service), "httpClient", httpClient);
@@ -92,8 +92,7 @@ class ThumbnailServiceImplTest {
     @Test
     @SuppressWarnings("null")
     void downloadThumbnail_ShouldSkip_WhenThumbnailUrlIsNull() {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         item.setThumbnailUrl(null);
 
         service.downloadThumbnail(item);
@@ -104,8 +103,7 @@ class ThumbnailServiceImplTest {
     @Test
     @SuppressWarnings("null")
     void downloadThumbnail_ShouldSkip_WhenThumbnailUrlIsBlank() {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         item.setThumbnailUrl("   ");
 
         service.downloadThumbnail(item);
@@ -115,8 +113,7 @@ class ThumbnailServiceImplTest {
 
     @Test
     void downloadThumbnail_ShouldSkipAndMarkDownloaded_WhenObjectAlreadyExists() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         item.setThumbnailUrl("http://example.com/thumb.jpg");
 
         when(storageService.exists("v1.jpg")).thenReturn(true);
@@ -133,8 +130,7 @@ class ThumbnailServiceImplTest {
     @Test
     @SuppressWarnings({"unchecked"})
     void downloadThumbnail_ShouldStreamAndMarkDownloaded_WhenContentLengthProvided() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         item.setThumbnailUrl("http://example.com/thumb.jpg");
 
         when(storageService.exists("v1.jpg")).thenReturn(false);
@@ -160,8 +156,7 @@ class ThumbnailServiceImplTest {
     @Test
     @SuppressWarnings({"unchecked"})
     void downloadThumbnail_ShouldBufferAndMarkDownloaded_WhenContentLengthMissing() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         item.setThumbnailUrl("http://example.com/thumb.jpg");
 
         when(storageService.exists("v1.jpg")).thenReturn(false);
@@ -188,8 +183,7 @@ class ThumbnailServiceImplTest {
     @Test
     @SuppressWarnings({"unchecked"})
     void downloadThumbnail_ShouldMarkUnavailable_WhenResponse404() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         item.setThumbnailUrl("http://example.com/thumb.jpg");
 
         when(storageService.exists("v1.jpg")).thenReturn(false);
@@ -207,8 +201,7 @@ class ThumbnailServiceImplTest {
     @Test
     @SuppressWarnings({"unchecked"})
     void downloadThumbnail_ShouldMarkUnavailable_WhenResponse403() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         item.setThumbnailUrl("http://example.com/thumb.jpg");
 
         when(storageService.exists("v1.jpg")).thenReturn(false);
@@ -226,8 +219,7 @@ class ThumbnailServiceImplTest {
     @Test
     @SuppressWarnings({"unchecked"})
     void downloadThumbnail_ShouldMarkTempFailed_WhenResponse500() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         item.setThumbnailUrl("http://example.com/thumb.jpg");
 
         when(storageService.exists("v1.jpg")).thenReturn(false);
@@ -245,8 +237,7 @@ class ThumbnailServiceImplTest {
     @Test
     @SuppressWarnings({"unchecked"})
     void downloadThumbnail_ShouldMarkUnavailable_WhenMaxRetriesReached() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         item.setThumbnailUrl("http://example.com/thumb.jpg");
         // Set the current retry count to 2; adding this failure will reach the MAX_THUMBNAIL_RETRIES = 3 limit
         item.setThumbnailRetryCount(2);
@@ -266,8 +257,7 @@ class ThumbnailServiceImplTest {
     @Test
     @SuppressWarnings({"unchecked"})
     void downloadThumbnail_ShouldHandleIOException_FromHttpClient() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         item.setThumbnailUrl("http://example.com/thumb.jpg");
 
         when(storageService.exists("v1.jpg")).thenReturn(false);
@@ -282,8 +272,7 @@ class ThumbnailServiceImplTest {
     @Test
     @SuppressWarnings({"unchecked"})
     void downloadThumbnail_ShouldHandleInterruptedException_AndRestoreFlag() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         item.setThumbnailUrl("http://example.com/thumb.jpg");
 
         when(storageService.exists("v1.jpg")).thenReturn(false);
@@ -299,8 +288,7 @@ class ThumbnailServiceImplTest {
     @Test
     @SuppressWarnings({"unchecked"})
     void downloadThumbnail_ShouldMarkTempFailed_WhenStorageServiceThrowsException() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         item.setThumbnailUrl("http://example.com/thumb.jpg");
 
         when(storageService.exists("v1.jpg")).thenReturn(false);
@@ -357,8 +345,7 @@ class ThumbnailServiceImplTest {
     @Test
     @SuppressWarnings({"unchecked"})
     void downloadThumbnail_ShouldMarkTempFailed_WhenResponse199() throws Exception {
-        Item item = new Item();
-        item.setVideoId("v1");
+        Item item = new Item("v1");
         item.setThumbnailUrl("http://example.com/thumb.jpg");
 
         when(storageService.exists("v1.jpg")).thenReturn(false);

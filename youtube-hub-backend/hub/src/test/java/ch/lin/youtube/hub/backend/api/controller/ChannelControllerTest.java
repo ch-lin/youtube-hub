@@ -61,8 +61,7 @@ class ChannelControllerTest {
 
     @Test
     void getAllChannels_ShouldReturnChannels() {
-        Channel channel = new Channel();
-        channel.setChannelId("ch1");
+        Channel channel = new Channel("ch1");
         when(channelService.getAllChannels()).thenReturn(List.of(channel));
 
         ResponseEntity<List<ChannelResponse>> response = channelController.getAllChannels();
@@ -81,8 +80,7 @@ class ChannelControllerTest {
         request.setUrls(List.of("url1"));
         request.setConfigName("config");
 
-        Channel channel = new Channel();
-        channel.setChannelId("ch1");
+        Channel channel = new Channel("ch1");
         FailedUrl failed = new FailedUrl("url2", "reason");
 
         AddChannelsResult result = new AddChannelsResult(List.of(channel), List.of(failed));

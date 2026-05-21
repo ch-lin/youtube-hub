@@ -30,26 +30,24 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 class ChannelTest {
 
     @Test
     void testGettersAndSetters() {
-        Channel channel = new Channel();
-        Long id = 1L;
         String channelId = "UC_x5XG1OV2P6uZZ5FSM9Ttw";
+        Channel channel = new Channel(channelId);
         String title = "Google for Developers";
         String handle = "@GoogleDevelopers";
         Set<Playlist> playlists = new HashSet<>();
 
-        channel.setId(id);
-        channel.setChannelId(channelId);
         channel.setTitle(title);
         channel.setHandle(handle);
         channel.setPlaylists(playlists);
 
-        assertEquals(id, channel.getId());
+        assertNull(channel.getId(), "ID should be null before persisting to the database");
         assertEquals(channelId, channel.getChannelId());
         assertEquals(title, channel.getTitle());
         assertEquals(handle, channel.getHandle());
@@ -64,19 +62,27 @@ class ChannelTest {
         assertNull(channel.getChannelId());
         assertNull(channel.getTitle());
         assertNull(channel.getHandle());
-        assertNull(channel.getPlaylists());
+        assertNotNull(channel.getPlaylists());
+        assertTrue(channel.getPlaylists().isEmpty());
     }
 
     @Test
-    void testAllArgsConstructor() {
+    void testBuilder() {
+        Long id = 1L;
         String channelId = "UC_x5XG1OV2P6uZZ5FSM9Ttw";
         String title = "Google for Developers";
         String handle = "@GoogleDevelopers";
         Set<Playlist> playlists = new HashSet<>();
 
-        Channel channel = new Channel(channelId, title, handle, playlists);
+        Channel channel = Channel.builder()
+                .id(id)
+                .channelId(channelId)
+                .title(title)
+                .handle(handle)
+                .playlists(playlists)
+                .build();
 
-        assertNull(channel.getId()); // BaseEntity ID is not part of AllArgsConstructor
+        assertEquals(id, channel.getId());
         assertEquals(channelId, channel.getChannelId());
         assertEquals(title, channel.getTitle());
         assertEquals(handle, channel.getHandle());
@@ -88,19 +94,27 @@ class ChannelTest {
         String channelId1 = "UC_x5XG1OV2P6uZZ5FSM9Ttw";
         String title1 = "Google for Developers";
         String handle1 = "@GoogleDevelopers";
-        Channel channel1 = new Channel(channelId1, title1, handle1, new HashSet<>());
+        Channel channel1 = new Channel(channelId1);
+        channel1.setTitle(title1);
+        channel1.setHandle(handle1);
 
         String channelId2 = "UC_x5XG1OV2P6uZZ5FSM9Ttw";
         String title2 = "Google for Developers";
         String handle2 = "@GoogleDevelopers";
-        Channel channel2 = new Channel(channelId2, title2, handle2, new HashSet<>());
+        Channel channel2 = new Channel(channelId2);
+        channel2.setTitle(title2);
+        channel2.setHandle(handle2);
 
         String channelId3 = "UC-lHJZR3Gqxm24_Vd_AJ5Yw";
         String title3 = "Another Channel";
         String handle3 = "@AnotherChannel";
-        Channel channel3 = new Channel(channelId3, title3, handle3, new HashSet<>());
+        Channel channel3 = new Channel(channelId3);
+        channel3.setTitle(title3);
+        channel3.setHandle(handle3);
 
-        Channel channel4 = new Channel(channelId1, title3, handle1, new HashSet<>());
+        Channel channel4 = new Channel(channelId1);
+        channel4.setTitle(title3);
+        channel4.setHandle(handle1);
 
         // Test for equality
         assertEquals(channel1, channel2);
@@ -122,7 +136,9 @@ class ChannelTest {
 
     @Test
     void testEqualsWithSameInstance() {
-        Channel channel = new Channel("id", "title", "handle", null);
+        Channel channel = new Channel("id");
+        channel.setTitle("title");
+        channel.setHandle("handle");
         assertEquals(channel, channel);
     }
 }

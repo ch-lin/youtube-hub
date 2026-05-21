@@ -93,8 +93,7 @@ public class TagServiceImpl implements TagService {
             throw new TagAlreadyExistsException("Tag with name '" + name + "' already exists.");
         }
 
-        Tag tag = new Tag();
-        tag.setName(name);
+        Tag tag = new Tag(name);
         return tagRepository.save(tag);
     }
 
