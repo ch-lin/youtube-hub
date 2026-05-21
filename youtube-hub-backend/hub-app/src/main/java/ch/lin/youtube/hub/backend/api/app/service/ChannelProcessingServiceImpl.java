@@ -189,9 +189,16 @@ public class ChannelProcessingServiceImpl implements ChannelProcessingService {
             if (e instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
             }
-            if (e instanceof HttpException && ((HttpException) e).getStatusCode() == 400
-                    && e.getMessage() != null && e.getMessage().contains("API key not valid")) {
-                throw new YoutubeApiAuthException("The provided YouTube API key is not valid.", e);
+            if (e instanceof HttpException httpException) {
+                if (httpException.getStatusCode() == 404) {
+                    // Channel is likely terminated or does not exist.
+                    logger.warn("Channel with ID {} not found on YouTube (HTTP 404). It might be terminated.", channelId);
+                    throw new YoutubeApiRequestException("Channel not found on YouTube (HTTP 404).", e);
+                }
+                if (httpException.getStatusCode() == 400 && httpException.getMessage() != null
+                        && httpException.getMessage().contains("API key not valid")) {
+                    throw new YoutubeApiAuthException("The provided YouTube API key is not valid.", e);
+                }
             }
             logger.error("Failed to fetch channel details from YouTube API for channelId {}: {}", channelId,
                     e.getMessage(), e);

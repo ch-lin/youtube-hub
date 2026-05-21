@@ -320,6 +320,19 @@ class ChannelProcessingServiceImplTest {
     }
 
     @Test
+    void prepareChannelAndPlaylist_ShouldThrowRequestException_WhenHttpException404() throws Exception {
+        Channel channel = new Channel("UC123");
+
+        when(youtubeApiUsageService.hasSufficientQuota(anyLong(), anyLong())).thenReturn(true);
+        when(httpClient.get(anyString(), anyMap(), any()))
+                .thenThrow(new HttpException("GET", 404, "Not Found"));
+
+        assertThatThrownBy(() -> service.prepareChannelAndPlaylist(channel, httpClient, "key", 0, 100, 10))
+                .isInstanceOf(YoutubeApiRequestException.class)
+                .hasMessageContaining("Channel not found on YouTube (HTTP 404)");
+    }
+
+    @Test
     void prepareChannelAndPlaylist_ShouldThrowRequestException_WhenHttpException400WithNullMessage() throws Exception {
         Channel channel = new Channel("UC123");
 
