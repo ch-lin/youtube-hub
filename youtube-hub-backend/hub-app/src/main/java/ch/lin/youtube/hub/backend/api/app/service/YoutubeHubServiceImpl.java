@@ -475,6 +475,7 @@ public class YoutubeHubServiceImpl implements YoutubeHubService {
                 Map<String, Item> itemMap = itemsToDownload.stream()
                         .collect(Collectors.toMap(Item::getVideoId, item -> item));
                 List<DownloadInfo> newDownloadInfos = new ArrayList<>();
+                List<Item> updatedItems = new ArrayList<>();
 
                 for (JsonNode taskIdentifierNode : dataNode) {
                     String videoId = taskIdentifierNode.path("videoId").asText(null);
@@ -485,10 +486,14 @@ public class YoutubeHubServiceImpl implements YoutubeHubService {
                         DownloadInfo downloadInfo = new DownloadInfo(item);
                         downloadInfo.setDownloadTaskId(taskId);
                         newDownloadInfos.add(downloadInfo);
+
+                        item.setStatus(ProcessingStatus.PENDING);
+                        updatedItems.add(item);
                     }
                 }
 
                 downloadInfoRepository.saveAll(newDownloadInfos);
+                itemRepository.saveAll(updatedItems);
                 logger.info("Successfully created {} DownloadInfo records.", newDownloadInfos.size());
 
                 return Map.of("createdTasks", newDownloadInfos.size());
