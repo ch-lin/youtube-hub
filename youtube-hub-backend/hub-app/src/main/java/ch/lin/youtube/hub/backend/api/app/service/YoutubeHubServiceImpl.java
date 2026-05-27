@@ -431,7 +431,22 @@ public class YoutubeHubServiceImpl implements YoutubeHubService {
                     videoIds.size(), itemsToDownload.size());
         }
 
-        List<DownloadItem> downloadItems = itemsToDownload.stream()
+        List<Item> validItemsToDownload = itemsToDownload.stream()
+                .filter(item -> {
+                    ProcessingStatus status = item.getStatus();
+                    return status != ProcessingStatus.PENDING
+                            && status != ProcessingStatus.DOWNLOADING
+                            && status != ProcessingStatus.DELETED
+                            && status != ProcessingStatus.IGNORE;
+                })
+                .toList();
+
+        if (validItemsToDownload.isEmpty()) {
+            logger.info("All requested items are already processing or in an invalid state. Skipping external downloader call.");
+            return Map.of("createdTasks", 0);
+        }
+
+        List<DownloadItem> downloadItems = validItemsToDownload.stream()
                 .map(item -> {
                     DownloadItem downloadItem = new DownloadItem();
                     downloadItem.setVideoId(item.getVideoId());
@@ -472,7 +487,7 @@ public class YoutubeHubServiceImpl implements YoutubeHubService {
                             "Downloader response did not contain a valid 'data' array.");
                 }
 
-                Map<String, Item> itemMap = itemsToDownload.stream()
+                Map<String, Item> itemMap = validItemsToDownload.stream()
                         .collect(Collectors.toMap(Item::getVideoId, item -> item));
                 List<DownloadInfo> newDownloadInfos = new ArrayList<>();
                 List<Item> updatedItems = new ArrayList<>();

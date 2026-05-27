@@ -696,6 +696,59 @@ class YoutubeHubServiceImplTest {
         }
     }
 
+    @SuppressWarnings("null")
+    @Test
+    void downloadItems_ShouldSkipExternalCall_WhenAllItemsInvalidState() {
+        Item item1 = new Item("v1");
+        item1.setStatus(ProcessingStatus.PENDING);
+        Item item2 = new Item("v2");
+        item2.setStatus(ProcessingStatus.DOWNLOADING);
+        Item item3 = new Item("v3");
+        item3.setStatus(ProcessingStatus.DELETED);
+        Item item4 = new Item("v4");
+        item4.setStatus(ProcessingStatus.IGNORE);
+
+        when(itemRepository.findAllByVideoIdIn(List.of("v1", "v2", "v3", "v4"))).thenReturn(List.of(item1, item2, item3, item4));
+
+        Map<String, Object> result = service.downloadItems(List.of("v1", "v2", "v3", "v4"), "default", null);
+
+        assertThat(result.get("createdTasks")).isEqualTo(0);
+        verify(downloadInfoRepository, never()).saveAll(anyList());
+    }
+
+    @Test
+    @SuppressWarnings({"null"})
+    void downloadItems_ShouldFilterOutInvalidStates_BeforeCallingDownloader() throws Exception {
+        Item item1 = new Item("v1");
+        item1.setStatus(ProcessingStatus.NEW); // valid
+        Item item2 = new Item("v2");
+        item2.setStatus(ProcessingStatus.PENDING); // invalid
+        Item item3 = new Item("v3");
+        item3.setStatus(ProcessingStatus.FAILED); // valid
+
+        when(itemRepository.findAllByVideoIdIn(List.of("v1", "v2", "v3"))).thenReturn(List.of(item1, item2, item3));
+
+        try (MockedConstruction<HttpClient> mocked = mockConstruction(HttpClient.class,
+                (mock, context) -> {
+                    HttpClient.Response response = new HttpClient.Response(200, "{\"data\": [{\"videoId\": \"v1\", \"taskId\": \"task1\"}, {\"videoId\": \"v3\", \"taskId\": \"task3\"}]}");
+                    when(mock.post(eq("/download"), any(), anyString(), any())).thenReturn(response);
+                })) {
+
+            Map<String, Object> result = service.downloadItems(List.of("v1", "v2", "v3"), "default", null);
+
+            assertThat(result.get("createdTasks")).isEqualTo(2);
+
+            HttpClient client = mocked.constructed().get(0);
+            ArgumentCaptor<String> bodyCaptor = ArgumentCaptor.forClass(String.class);
+            verify(client).post(eq("/download"), any(), bodyCaptor.capture(), any());
+            String requestBody = bodyCaptor.getValue();
+
+            assertThat(requestBody).contains("v1");
+            assertThat(requestBody).contains("v3");
+            assertThat(requestBody).doesNotContain("v2");
+        }
+    }
+
     @Test
     void processJob_ShouldUseProvidedApiKey_AndResolveConfigForQuota() {
         HubConfig config = new HubConfig("default");
