@@ -24,6 +24,7 @@
 package ch.lin.youtube.hub.backend.api.controller;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -45,6 +46,7 @@ import ch.lin.youtube.hub.backend.api.app.service.ItemService;
 import ch.lin.youtube.hub.backend.api.app.service.StorageService;
 import ch.lin.youtube.hub.backend.api.app.service.model.ItemUpdateResult;
 import ch.lin.youtube.hub.backend.api.domain.model.Item;
+import ch.lin.youtube.hub.backend.api.domain.model.ProcessingStatus;
 import ch.lin.youtube.hub.backend.api.dto.ItemResponse;
 import ch.lin.youtube.hub.backend.api.dto.UpdateItemRequest;
 import jakarta.validation.Valid;
@@ -167,6 +169,20 @@ public class ItemController {
         ApiResponse<ItemResponse> response = ApiResponse.success(new ItemResponse(updatedItem, resolvedUrl), result.warnings());
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Retrieves the lightweight processing statuses for a batch of video IDs.
+     * This is optimized for background polling by the UI.
+     *
+     * @param videoIds A list of video IDs to query.
+     * @return A {@link ResponseEntity} containing a map of videoId to its
+     * status.
+     */
+    @GetMapping(value = "/statuses", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, ProcessingStatus>> getItemStatuses(@RequestParam final List<String> videoIds) {
+        Map<String, ProcessingStatus> statuses = itemService.getItemStatuses(videoIds);
+        return ResponseEntity.ok(statuses);
     }
 
 }

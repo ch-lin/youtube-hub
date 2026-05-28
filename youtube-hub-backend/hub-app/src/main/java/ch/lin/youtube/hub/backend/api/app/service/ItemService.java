@@ -1,6 +1,7 @@
 package ch.lin.youtube.hub.backend.api.app.service;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -67,4 +68,13 @@ public interface ItemService {
      * list of any warnings (e.g., potential duplicates).
      */
     ItemUpdateResult updateItemFileInfo(String videoId, String downloadTaskId, Long fileSize, String filePath, ProcessingStatus status);
+
+    /**
+     * Retrieves the processing statuses for a given list of video IDs.
+     *
+     * @param videoIds The list of YouTube video IDs.
+     * @return A map where the key is the video ID and the value is its
+     * processing status.
+     */
+    Map<String, ProcessingStatus> getItemStatuses(List<String> videoIds);
 }

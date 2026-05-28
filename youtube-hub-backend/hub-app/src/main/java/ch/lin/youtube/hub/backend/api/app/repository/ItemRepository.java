@@ -38,6 +38,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import ch.lin.youtube.hub.backend.api.domain.model.Item;
+import ch.lin.youtube.hub.backend.api.domain.model.ProcessingStatus;
 import ch.lin.youtube.hub.backend.api.domain.model.Tag;
 import ch.lin.youtube.hub.backend.api.domain.model.ThumbnailStatus;
 
@@ -207,4 +208,23 @@ public interface ItemRepository extends JpaRepository<Item, Long>, JpaSpecificat
     @Modifying
     @Query("UPDATE Item i SET i.thumbnailStatus = :pending, i.thumbnailRetryCount = 0, i.thumbnailAttemptedAt = null WHERE i.thumbnailStatus = :unavailable AND i.videoId IN :videoIds")
     int resetUnavailableThumbnailsByVideoIds(@Param("videoIds") List<String> videoIds, @Param("pending") ThumbnailStatus pending, @Param("unavailable") ThumbnailStatus unavailable);
+
+    /**
+     * Projection interface for fetching only videoId and status.
+     */
+    interface ItemStatusProjection {
+
+        String getVideoId();
+
+        ProcessingStatus getStatus();
+    }
+
+    /**
+     * Retrieves only the statuses of the specified video IDs.
+     *
+     * @param videoIds A list of YouTube video IDs.
+     * @return A list of projections containing only video IDs and statuses.
+     */
+    @Query("SELECT i.videoId as videoId, i.status as status FROM Item i WHERE i.videoId IN :videoIds")
+    List<ItemStatusProjection> findStatusesByVideoIds(@Param("videoIds") List<String> videoIds);
 }

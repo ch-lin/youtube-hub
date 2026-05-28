@@ -25,6 +25,7 @@ package ch.lin.youtube.hub.backend.api.controller;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -224,5 +225,20 @@ class ItemControllerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         verify(storageService, never()).getFileAccessUrl(anyString());
+    }
+
+    @Test
+    void getItemStatuses_ShouldReturnStatusesMap() {
+        List<String> videoIds = List.of("vid1", "vid2");
+        Map<String, ProcessingStatus> mockStatuses = Map.of(
+                "vid1", ProcessingStatus.DOWNLOADED,
+                "vid2", ProcessingStatus.PENDING
+        );
+        when(itemService.getItemStatuses(videoIds)).thenReturn(mockStatuses);
+
+        ResponseEntity<Map<String, ProcessingStatus>> response = itemController.getItemStatuses(videoIds);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isEqualTo(mockStatuses);
     }
 }
