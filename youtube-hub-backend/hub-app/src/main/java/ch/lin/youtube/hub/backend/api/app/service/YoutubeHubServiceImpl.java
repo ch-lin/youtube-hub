@@ -610,6 +610,18 @@ public class YoutubeHubServiceImpl implements YoutubeHubService {
      * {@inheritDoc}
      */
     @Override
+    @Transactional
+    public int ignoreAllPendingThumbnails() {
+        logger.info("Starting job to mark all PENDING thumbnails as IGNORED...");
+        int updatedCount = itemRepository.ignoreAllPendingThumbnails(ThumbnailStatus.IGNORED, ThumbnailStatus.PENDING);
+        logger.info("Successfully ignored {} pending thumbnails.", updatedCount);
+        return updatedCount;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public Map<String, Long> getThumbnailCounts() {
         return thumbnailService.getThumbnailCounts();
     }

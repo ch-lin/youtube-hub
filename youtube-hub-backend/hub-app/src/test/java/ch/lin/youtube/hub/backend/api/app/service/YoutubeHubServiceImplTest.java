@@ -1301,6 +1301,16 @@ class YoutubeHubServiceImplTest {
         verify(itemRepository, never()).resetAllUnavailableThumbnails(any(), any());
     }
 
+    @Test
+    void ignoreAllPendingThumbnails_ShouldCallRepositoryAndReturnCount() {
+        when(itemRepository.ignoreAllPendingThumbnails(ThumbnailStatus.IGNORED, ThumbnailStatus.PENDING)).thenReturn(10);
+
+        int result = service.ignoreAllPendingThumbnails();
+
+        assertThat(result).isEqualTo(10);
+        verify(itemRepository).ignoreAllPendingThumbnails(ThumbnailStatus.IGNORED, ThumbnailStatus.PENDING);
+    }
+
     @Nested
     @SuppressWarnings("unused")
     @org.junit.jupiter.api.DisplayName("Tests for syncMissingThumbnailsBackground method")

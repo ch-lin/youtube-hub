@@ -210,6 +210,17 @@ public interface ItemRepository extends JpaRepository<Item, Long>, JpaSpecificat
     int resetUnavailableThumbnailsByVideoIds(@Param("videoIds") List<String> videoIds, @Param("pending") ThumbnailStatus pending, @Param("unavailable") ThumbnailStatus unavailable);
 
     /**
+     * Marks all PENDING thumbnails as IGNORED.
+     *
+     * @param ignored The target ignored status.
+     * @param pending The current pending status.
+     * @return The number of items updated.
+     */
+    @Modifying
+    @Query("UPDATE Item i SET i.thumbnailStatus = :ignored WHERE i.thumbnailStatus = :pending")
+    int ignoreAllPendingThumbnails(@Param("ignored") ThumbnailStatus ignored, @Param("pending") ThumbnailStatus pending);
+
+    /**
      * Projection interface for fetching only videoId and status.
      */
     interface ItemStatusProjection {
