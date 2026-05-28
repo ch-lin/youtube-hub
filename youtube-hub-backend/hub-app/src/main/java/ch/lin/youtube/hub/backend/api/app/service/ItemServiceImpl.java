@@ -25,10 +25,13 @@ package ch.lin.youtube.hub.backend.api.app.service;
 
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -326,5 +329,26 @@ public class ItemServiceImpl implements ItemService {
         }
 
         return ItemUpdateResult.of(item, warnings);
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * This implementation uses a lightweight projection to fetch only the
+     * required status fields from the database, minimizing memory and network
+     * overhead.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, ProcessingStatus> getItemStatuses(List<String> videoIds) {
+        if (videoIds == null || videoIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        return itemRepository.findStatusesByVideoIds(videoIds).stream()
+                .collect(Collectors.toMap(
+                        ItemRepository.ItemStatusProjection::getVideoId,
+                        ItemRepository.ItemStatusProjection::getStatus
+                ));
     }
 }

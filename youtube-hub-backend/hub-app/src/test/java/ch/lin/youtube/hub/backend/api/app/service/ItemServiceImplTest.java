@@ -27,6 +27,7 @@ import java.time.OffsetDateTime;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -486,5 +487,40 @@ class ItemServiceImplTest {
         captor.getValue().toPredicate(root, query, cb);
         itemService.getItems(false, false, "not_none", false, false, false, null, Pageable.unpaged());
         captor.getValue().toPredicate(root, query, cb);
+    }
+
+    @Test
+    void getItemStatuses_ShouldReturnEmptyMap_WhenVideoIdsIsNull() {
+        Map<String, ProcessingStatus> result = itemService.getItemStatuses(null);
+
+        assertThat(result).isEmpty();
+        verify(itemRepository, never()).findStatusesByVideoIds(any());
+    }
+
+    @Test
+    void getItemStatuses_ShouldReturnEmptyMap_WhenVideoIdsIsEmpty() {
+        Map<String, ProcessingStatus> result = itemService.getItemStatuses(Collections.emptyList());
+
+        assertThat(result).isEmpty();
+        verify(itemRepository, never()).findStatusesByVideoIds(any());
+    }
+
+    @Test
+    void getItemStatuses_ShouldReturnStatusMap_WhenVideoIdsProvided() {
+        ItemRepository.ItemStatusProjection proj1 = mock(ItemRepository.ItemStatusProjection.class);
+        when(proj1.getVideoId()).thenReturn("vid1");
+        when(proj1.getStatus()).thenReturn(ProcessingStatus.DOWNLOADED);
+
+        ItemRepository.ItemStatusProjection proj2 = mock(ItemRepository.ItemStatusProjection.class);
+        when(proj2.getVideoId()).thenReturn("vid2");
+        when(proj2.getStatus()).thenReturn(ProcessingStatus.PENDING);
+
+        when(itemRepository.findStatusesByVideoIds(List.of("vid1", "vid2"))).thenReturn(List.of(proj1, proj2));
+
+        Map<String, ProcessingStatus> result = itemService.getItemStatuses(List.of("vid1", "vid2"));
+
+        assertThat(result).hasSize(2)
+                .containsEntry("vid1", ProcessingStatus.DOWNLOADED)
+                .containsEntry("vid2", ProcessingStatus.PENDING);
     }
 }

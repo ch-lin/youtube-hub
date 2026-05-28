@@ -125,6 +125,14 @@ public interface YoutubeHubService {
     int resetUnavailableThumbnails(List<String> videoIds);
 
     /**
+     * Marks all PENDING thumbnails as IGNORED to prevent future download
+     * attempts.
+     *
+     * @return The number of items successfully updated.
+     */
+    int ignoreAllPendingThumbnails();
+
+    /**
      * Initiates a background job to continuously synchronize missing
      * thumbnails.
      * <p>

@@ -275,6 +275,24 @@ public class YoutubeHubController {
     }
 
     /**
+     * Marks all PENDING thumbnails as IGNORED.
+     * <p>
+     * This bulk operation is useful for bypassing massive thumbnail downloads
+     * during initial setup or clearing out a large backlog.
+     *
+     * @return A {@link ResponseEntity} with an {@link ApiResponse} containing
+     * the count of ignored items and an HTTP 200 OK status.
+     * <p>
+     * Example cURL request:
+     * <pre>{@code curl -X PATCH http://localhost:8080/tasks/ignore-all-pending-thumbnails}</pre>
+     */
+    @PatchMapping(value = "/ignore-all-pending-thumbnails", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ApiResponse<Map<String, Integer>>> ignoreAllPendingThumbnails() {
+        int updatedCount = youtubeHubService.ignoreAllPendingThumbnails();
+        return ResponseEntity.ok(ApiResponse.success(Map.of("ignoredItems", updatedCount)));
+    }
+
+    /**
      * Retrieves the current status of the background thumbnail synchronization
      * job.
      *

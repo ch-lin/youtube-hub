@@ -44,5 +44,10 @@ public enum ThumbnailStatus {
      * The thumbnail is permanently unavailable (e.g., 404 Not Found, 403
      * Forbidden).
      */
-    UNAVAILABLE
+    UNAVAILABLE,
+    /**
+     * The thumbnail download was manually ignored by the user. The system will
+     * skip downloading this thumbnail in the future.
+     */
+    IGNORED
 }

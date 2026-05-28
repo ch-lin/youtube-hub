@@ -254,4 +254,17 @@ class YoutubeHubControllerTest {
         assertThat(body.getData().get("resetItems")).isEqualTo(2);
         verify(youtubeHubService).resetUnavailableThumbnails(videoIds);
     }
+
+    @Test
+    void ignoreAllPendingThumbnails_ShouldCallServiceAndReturnCount() {
+        when(youtubeHubService.ignoreAllPendingThumbnails()).thenReturn(15);
+
+        ResponseEntity<ApiResponse<Map<String, Integer>>> response = youtubeHubController.ignoreAllPendingThumbnails();
+        ApiResponse<Map<String, Integer>> body = response.getBody();
+        Objects.requireNonNull(body);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(body.getData().get("ignoredItems")).isEqualTo(15);
+        verify(youtubeHubService).ignoreAllPendingThumbnails();
+    }
 }
