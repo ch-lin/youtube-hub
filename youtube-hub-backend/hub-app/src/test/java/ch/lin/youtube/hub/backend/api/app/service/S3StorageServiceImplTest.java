@@ -101,12 +101,23 @@ class S3StorageServiceImplTest {
     }
 
     @Test
-    void exists_ShouldReturnFalse_WhenAwsServiceExceptionIsThrown() {
+    void exists_ShouldReturnFalse_AndLogDebug_WhenAwsServiceExceptionIs403() {
         when(s3Client.headObject(any(HeadObjectRequest.class)))
-                .thenThrow(software.amazon.awssdk.awscore.exception.AwsServiceException.builder().message("Access Denied").build());
+                .thenThrow(software.amazon.awssdk.awscore.exception.AwsServiceException.builder().statusCode(403).message("Forbidden").build());
 
-        // Should catch the exception, log it, and return false
+        // Should catch the exception, log as debug without stacktrace, and return false
         boolean result = service.exists("forbidden.jpg");
+
+        assertThat(result).isFalse();
+    }
+
+    @Test
+    void exists_ShouldReturnFalse_AndLogError_WhenAwsServiceExceptionIsNot403() {
+        when(s3Client.headObject(any(HeadObjectRequest.class)))
+                .thenThrow(software.amazon.awssdk.awscore.exception.AwsServiceException.builder().statusCode(500).message("Internal Server Error").build());
+
+        // Should catch the exception, log as error with stacktrace, and return false
+        boolean result = service.exists("server-error.jpg");
 
         assertThat(result).isFalse();
     }
