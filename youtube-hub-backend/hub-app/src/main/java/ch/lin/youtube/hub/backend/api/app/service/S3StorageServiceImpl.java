@@ -124,8 +124,17 @@ public class S3StorageServiceImpl implements StorageService {
         } catch (NoSuchKeyException e) {
             // S3 explicitly throws NoSuchKeyException when the requested object does not exist.
             return false;
-        } catch (AwsServiceException | SdkClientException e) {
-            // Catch any other exceptions (e.g., network issues, permission denied)
+        } catch (AwsServiceException e) {
+            if (e.statusCode() == 403) {
+                // S3 returns 403 Forbidden instead of 404 when the object doesn't exist and the user lacks s3:ListBucket.
+                // Gracefully degrade to a debug log without printing the full stack trace.
+                logger.debug("Object '{}' not found or access denied (403 Forbidden) in bucket '{}'.", objectKey, bucketName);
+                return false;
+            }
+            logger.error("Error checking existence of object '{}' in bucket '{}'", objectKey, bucketName, e);
+            return false;
+        } catch (SdkClientException e) {
+            // Catch any other client/network exceptions
             // and return false so the application can attempt to process/download the file again.
             logger.error("Error checking existence of object '{}' in bucket '{}'", objectKey, bucketName, e);
             return false;
