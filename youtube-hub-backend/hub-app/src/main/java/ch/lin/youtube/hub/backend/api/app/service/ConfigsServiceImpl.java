@@ -34,6 +34,7 @@ import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.support.CronExpression;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,6 +50,7 @@ import ch.lin.youtube.hub.backend.api.app.service.command.CreateConfigCommand;
 import ch.lin.youtube.hub.backend.api.app.service.command.UpdateConfigCommand;
 import ch.lin.youtube.hub.backend.api.app.service.model.AllConfigsData;
 import ch.lin.youtube.hub.backend.api.app.service.model.TimeZoneOption;
+import ch.lin.youtube.hub.backend.api.app.service.event.ConfigUpdatedEvent;
 import ch.lin.youtube.hub.backend.api.domain.model.HubConfig;
 
 /**
@@ -67,6 +69,7 @@ public class ConfigsServiceImpl implements ConfigsService {
     private final HubConfigRepository hubConfigRepository;
     private final HubDefaultProperties defaultProperties;
     private final DefaultConfigFactory defaultConfigFactory;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * Constructs the service with its required dependencies.
@@ -78,10 +81,11 @@ public class ConfigsServiceImpl implements ConfigsService {
      * instances.
      */
     public ConfigsServiceImpl(HubConfigRepository hubConfigRepository, HubDefaultProperties defaultProperties,
-            DefaultConfigFactory defaultConfigFactory) {
+            DefaultConfigFactory defaultConfigFactory, ApplicationEventPublisher eventPublisher) {
         this.hubConfigRepository = hubConfigRepository;
         this.defaultProperties = defaultProperties;
         this.defaultConfigFactory = defaultConfigFactory;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -272,6 +276,9 @@ public class ConfigsServiceImpl implements ConfigsService {
             defaultConfig.setEnabled(true);
             hubConfigRepository.save(defaultConfig);
         }
+
+        // Publish an event to notify that the configuration has been updated
+        eventPublisher.publishEvent(new ConfigUpdatedEvent(this));
 
         return savedConfig;
     }
