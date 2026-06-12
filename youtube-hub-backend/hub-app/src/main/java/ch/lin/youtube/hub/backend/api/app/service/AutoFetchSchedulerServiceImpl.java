@@ -26,14 +26,17 @@ package ch.lin.youtube.hub.backend.api.app.service;
 import java.time.Duration;
 import java.time.ZoneId;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.support.CronTrigger;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import ch.lin.youtube.hub.backend.api.app.service.event.ConfigUpdatedEvent;
 import ch.lin.youtube.hub.backend.api.domain.model.HubConfig;
 import ch.lin.youtube.hub.backend.api.domain.model.SchedulerType;
 import jakarta.annotation.PostConstruct;
@@ -55,6 +58,7 @@ public class AutoFetchSchedulerServiceImpl implements AutoFetchSchedulerService 
     private final TaskScheduler taskScheduler;
 
     private ScheduledFuture<?> scheduledTask;
+    private final AtomicBoolean isJobRunning = new AtomicBoolean(false);
 
     /**
      * Constructs a new {@code AutoFetchSchedulerServiceImpl} with the required
@@ -86,6 +90,22 @@ public class AutoFetchSchedulerServiceImpl implements AutoFetchSchedulerService 
         if (Boolean.TRUE.equals(config.getAutoStartFetchScheduler())) {
             logger.info("Auto-start fetch scheduler is enabled. Starting...");
             start();
+        }
+    }
+
+    /**
+     * Listens for configuration updates. If the scheduler is currently running,
+     * it will gracefully reload to apply any changes to scheduling intervals.
+     * It does not change the running state based on autoStartFetchScheduler.
+     */
+    @EventListener
+    public void onConfigUpdated(ConfigUpdatedEvent event) {
+        if (isSchedulerRunning()) {
+            logger.info("Configuration update detected. Reloading active scheduler to apply new intervals...");
+            stop();
+            start();
+        } else {
+            logger.debug("Configuration update detected, but scheduler is not running. Doing nothing.");
         }
     }
 
@@ -189,6 +209,11 @@ public class AutoFetchSchedulerServiceImpl implements AutoFetchSchedulerService 
      */
     @Override
     public void executeFetchJob() {
+        if (!isJobRunning.compareAndSet(false, true)) {
+            logger.info("A scheduled auto-fetch job is already running. Skipping this execution.");
+            return;
+        }
+
         logger.info("Executing scheduled auto-fetch job...");
         try {
             // Retrieve the latest config to get the API key and name
@@ -211,6 +236,8 @@ public class AutoFetchSchedulerServiceImpl implements AutoFetchSchedulerService 
             youtubeHubService.syncMissingThumbnailsBackground();
         } catch (Exception e) {
             logger.error("Error occurred during scheduled auto-fetch job execution.", e);
+        } finally {
+            isJobRunning.set(false);
         }
     }
 }

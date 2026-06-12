@@ -43,6 +43,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.support.CronTrigger;
 
+import ch.lin.youtube.hub.backend.api.app.service.event.ConfigUpdatedEvent;
 import ch.lin.youtube.hub.backend.api.domain.model.HubConfig;
 import ch.lin.youtube.hub.backend.api.domain.model.SchedulerType;
 
@@ -324,5 +325,51 @@ class AutoFetchSchedulerServiceImplTest {
         service.executeFetchJob();
 
         verify(youtubeHubService).processJob(any(), any(), any(), any(), eq(false), any());
+    }
+
+    @Test
+    @SuppressWarnings("null")
+    void onConfigUpdated_ShouldReload_WhenRunning() {
+        HubConfig config = new HubConfig();
+        config.setSchedulerType(SchedulerType.FIXED_RATE);
+        config.setFixedRate(1000L);
+        when(configsService.getResolvedConfig(null)).thenReturn(config);
+        when(taskScheduler.scheduleAtFixedRate(any(Runnable.class), any(Duration.class))).thenAnswer(i -> scheduledFuture);
+
+        service.start(); // Set it to running state
+
+        when(scheduledFuture.isCancelled()).thenReturn(false, true);
+        when(scheduledFuture.isDone()).thenReturn(false);
+
+        service.onConfigUpdated(new ConfigUpdatedEvent(this));
+
+        verify(scheduledFuture).cancel(false); // Verify stop() was called
+        verify(taskScheduler, times(2)).scheduleAtFixedRate(any(Runnable.class), any(Duration.class)); // Verify start() was called again
+    }
+
+    @Test
+    @SuppressWarnings("null")
+    void onConfigUpdated_ShouldDoNothing_WhenNotRunning() {
+        service.onConfigUpdated(new ConfigUpdatedEvent(this));
+        verify(taskScheduler, never()).scheduleAtFixedRate(any(Runnable.class), any(Duration.class));
+        verify(taskScheduler, never()).schedule(any(Runnable.class), any(CronTrigger.class));
+    }
+
+    @Test
+    void executeFetchJob_ShouldSkip_WhenAlreadyRunning() {
+        HubConfig config = new HubConfig("config-name");
+        when(configsService.getResolvedConfig(null)).thenReturn(config);
+
+        // We simulate a re-entrant call (e.g. another thread tries to start it while it's inside processJob)
+        // The AtomicBoolean should prevent the second execution.
+        org.mockito.Mockito.doAnswer(invocation -> {
+            service.executeFetchJob(); // This inner call should return immediately due to the lock
+            return null;
+        }).when(youtubeHubService).processJob(any(), any(), any(), any(), eq(false), any());
+
+        service.executeFetchJob();
+
+        // Verify that processJob was only executed ONCE, proving the lock worked correctly.
+        verify(youtubeHubService, times(1)).processJob(any(), any(), any(), any(), eq(false), any());
     }
 }

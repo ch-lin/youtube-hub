@@ -41,6 +41,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import ch.lin.platform.exception.ConfigCreationException;
 import ch.lin.platform.exception.ConfigNotFoundException;
@@ -50,6 +51,7 @@ import ch.lin.youtube.hub.backend.api.app.config.HubDefaultProperties;
 import ch.lin.youtube.hub.backend.api.app.repository.HubConfigRepository;
 import ch.lin.youtube.hub.backend.api.app.service.command.CreateConfigCommand;
 import ch.lin.youtube.hub.backend.api.app.service.command.UpdateConfigCommand;
+import ch.lin.youtube.hub.backend.api.app.service.event.ConfigUpdatedEvent;
 import ch.lin.youtube.hub.backend.api.app.service.model.AllConfigsData;
 import ch.lin.youtube.hub.backend.api.app.service.model.TimeZoneOption;
 import ch.lin.youtube.hub.backend.api.domain.model.HubConfig;
@@ -64,13 +66,15 @@ class ConfigsServiceImplTest {
     private HubDefaultProperties defaultProperties;
     @Mock
     private DefaultConfigFactory defaultConfigFactory;
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     private ConfigsServiceImpl configsService;
 
     @BeforeEach
     @SuppressWarnings("unused")
     void setUp() {
-        configsService = new ConfigsServiceImpl(hubConfigRepository, defaultProperties, defaultConfigFactory);
+        configsService = new ConfigsServiceImpl(hubConfigRepository, defaultProperties, defaultConfigFactory, eventPublisher);
     }
 
     @Test
@@ -481,6 +485,7 @@ class ConfigsServiceImplTest {
         assertThat(updated.getQuotaSafetyThreshold()).isEqualTo(1000L);
         assertThat(updated.getMaxThumbnailRetries()).isEqualTo(8);
         verify(hubConfigRepository).save(existingConfig);
+        verify(eventPublisher).publishEvent(any(ConfigUpdatedEvent.class));
     }
 
     @SuppressWarnings("null")
@@ -625,6 +630,7 @@ class ConfigsServiceImplTest {
         ArgumentCaptor<HubConfig> captor = ArgumentCaptor.forClass(HubConfig.class);
         verify(hubConfigRepository).save(captor.capture());
         assertThat(captor.getValue().getName()).isEqualTo(configName);
+        verify(eventPublisher).publishEvent(any(ConfigUpdatedEvent.class));
     }
 
     @SuppressWarnings("null")
@@ -661,9 +667,11 @@ class ConfigsServiceImplTest {
         configsService.saveConfig(command);
 
         assertThat(otherConfig.getEnabled()).isFalse();
+        verify(eventPublisher).publishEvent(any(ConfigUpdatedEvent.class));
     }
 
     @Test
+    @SuppressWarnings("null")
     void saveConfig_ShouldEnableDefault_WhenNoConfigEnabledAfterSave() {
         String configName = "current";
         UpdateConfigCommand command = mock(UpdateConfigCommand.class);
@@ -698,6 +706,7 @@ class ConfigsServiceImplTest {
 
         assertThat(defaultConfig.getEnabled()).isTrue();
         verify(hubConfigRepository).save(defaultConfig);
+        verify(eventPublisher).publishEvent(any(ConfigUpdatedEvent.class));
     }
 
     @Test
