@@ -238,4 +238,29 @@ public interface ItemRepository extends JpaRepository<Item, Long>, JpaSpecificat
      */
     @Query("SELECT i.videoId as videoId, i.status as status FROM Item i WHERE i.videoId IN :videoIds")
     List<ItemStatusProjection> findStatusesByVideoIds(@Param("videoIds") List<String> videoIds);
+
+    /**
+     * Projection to fetch only the required fields for export.
+     */
+    interface ItemExportProjection {
+
+        String getVideoId();
+
+        ProcessingStatus getStatus();
+
+        Integer getWidth();
+
+        Integer getHeight();
+    }
+
+    /**
+     * Streams items for export to prevent loading all entities into memory.
+     */
+    @org.springframework.data.jpa.repository.QueryHints(value = {
+        @jakarta.persistence.QueryHint(name = org.hibernate.jpa.HibernateHints.HINT_FETCH_SIZE, value = "500"),
+        @jakarta.persistence.QueryHint(name = org.hibernate.jpa.HibernateHints.HINT_CACHEABLE, value = "false"),
+        @jakarta.persistence.QueryHint(name = org.hibernate.jpa.HibernateHints.HINT_READ_ONLY, value = "true")
+    })
+    @Query("SELECT i.videoId as videoId, i.status as status, i.width as width, i.height as height FROM Item i")
+    java.util.stream.Stream<ItemExportProjection> streamAllForExport();
 }

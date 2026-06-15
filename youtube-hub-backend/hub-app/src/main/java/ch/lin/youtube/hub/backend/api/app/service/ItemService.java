@@ -1,5 +1,7 @@
 package ch.lin.youtube.hub.backend.api.app.service;
 
+import java.io.InputStream;
+import java.io.Writer;
 import java.util.List;
 import java.util.Map;
 
@@ -77,4 +79,22 @@ public interface ItemService {
      * processing status.
      */
     Map<String, ProcessingStatus> getItemStatuses(List<String> videoIds);
+
+    /**
+     * Exports specific item fields (videoId, status, width, height) to a CSV
+     * writer.
+     *
+     * @param writer The writer to stream the CSV data to.
+     */
+    void exportItemsToCsv(Writer writer);
+
+    /**
+     * Imports and updates item fields (status, width, height) from a CSV input
+     * stream.
+     *
+     * @param inputStream The input stream containing the CSV data.
+     * @return A list of video IDs that were present in the CSV but not found in
+     * the database.
+     */
+    List<String> importItemsFromCsv(InputStream inputStream);
 }
