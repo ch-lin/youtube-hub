@@ -35,6 +35,7 @@ import ch.lin.platform.api.ApiResponse;
 import ch.lin.platform.web.advice.BaseGlobalExceptionHandler;
 import ch.lin.youtube.hub.backend.api.common.exception.ChannelAlreadyExistsException;
 import ch.lin.youtube.hub.backend.api.common.exception.ChannelNotFoundException;
+import ch.lin.youtube.hub.backend.api.common.exception.CsvProcessingException;
 import ch.lin.youtube.hub.backend.api.common.exception.ItemAlreadyExistsException;
 import ch.lin.youtube.hub.backend.api.common.exception.ItemNotFoundException;
 import ch.lin.youtube.hub.backend.api.common.exception.PlaylistAlreadyExistsException;
@@ -143,5 +144,22 @@ public class WebGlobalExceptionHandler extends BaseGlobalExceptionHandler {
         ApiError error = new ApiError("YOUTUBE_API_AUTH_ERROR", ex.getMessage());
         ApiResponse<ApiError> response = ApiResponse.failure(error);
         return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
+    }
+
+    /**
+     * Handles exceptions related to CSV processing.
+     * <p>
+     * Catches {@link CsvProcessingException} and returns an {@link ApiResponse}
+     * with an "INTERNAL_SERVER_ERROR" error code.
+     *
+     * @param ex The caught {@link CsvProcessingException}.
+     * @return An {@link ApiResponse} containing the error details.
+     */
+    @ExceptionHandler(CsvProcessingException.class)
+    public ResponseEntity<ApiResponse<ApiError>> handleCsvProcessingException(CsvProcessingException ex) {
+        logger.error("CSV processing error: {}", ex.getMessage(), ex);
+        ApiError apiError = new ApiError("INTERNAL_SERVER_ERROR", ex.getMessage());
+        ApiResponse<ApiError> response = ApiResponse.failure(apiError);
+        return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }

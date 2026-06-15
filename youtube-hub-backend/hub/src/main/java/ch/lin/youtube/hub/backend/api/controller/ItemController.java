@@ -23,6 +23,7 @@
  *===========================================================================*/
 package ch.lin.youtube.hub.backend.api.controller;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
@@ -36,10 +37,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import ch.lin.platform.api.ApiResponse;
 import ch.lin.youtube.hub.backend.api.app.service.ItemService;
@@ -49,6 +52,7 @@ import ch.lin.youtube.hub.backend.api.domain.model.Item;
 import ch.lin.youtube.hub.backend.api.domain.model.ProcessingStatus;
 import ch.lin.youtube.hub.backend.api.dto.ItemResponse;
 import ch.lin.youtube.hub.backend.api.dto.UpdateItemRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 
 /**
@@ -185,4 +189,47 @@ public class ItemController {
         return ResponseEntity.ok(statuses);
     }
 
+    /**
+     * Exports items (video ID, status, width, height) to a CSV file. The data
+     * is streamed directly to the response to prevent memory overflow.
+     *
+     * @param response The HTTP servlet response.
+     * <p>
+     * Example cURL request:      <pre>
+     * {@code
+     * curl -X GET "http://localhost:8080/items/export?mediaType=csv" -O -J
+     * }
+     * </pre>
+     */
+    @GetMapping(value = "/export", produces = "text/csv")
+    public void exportItems(HttpServletResponse response) throws IOException {
+        response.setHeader("Content-Disposition", "attachment; filename=\"items_export.csv\"");
+        response.setContentType("text/csv");
+        response.setCharacterEncoding("UTF-8");
+        // Streams the data directly to the client
+        itemService.exportItemsToCsv(response.getWriter());
+    }
+
+    /**
+     * Imports items (status, width, height) from an uploaded CSV file. The file
+     * is processed in batches to avoid high memory consumption.
+     *
+     * @param file The uploaded CSV file.
+     * @return A {@link ResponseEntity} confirming the import success.
+     * <p>
+     * Example cURL request:      <pre>
+     * {@code
+     * curl -X POST http://localhost:8080/items/import -F "file=@/path/to/items_export.csv"
+     * }
+     * </pre>
+     */
+    @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ApiResponse<Map<String, Object>>> importItems(@RequestParam("file") MultipartFile file) throws IOException {
+        List<String> notFoundVideoIds = itemService.importItemsFromCsv(file.getInputStream());
+        Map<String, Object> result = Map.of(
+                "message", "Successfully imported items from CSV.",
+                "notFoundVideoIds", notFoundVideoIds
+        );
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
 }

@@ -23,6 +23,8 @@
  *===========================================================================*/
 package ch.lin.youtube.hub.backend.api.controller;
 
+import java.io.InputStream;
+import java.io.PrintWriter;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +39,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.isNull;
 import org.mockito.Mock;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -47,6 +50,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.multipart.MultipartFile;
 
 import ch.lin.platform.api.ApiResponse;
 import ch.lin.youtube.hub.backend.api.app.service.ItemService;
@@ -56,6 +60,7 @@ import ch.lin.youtube.hub.backend.api.domain.model.Item;
 import ch.lin.youtube.hub.backend.api.domain.model.ProcessingStatus;
 import ch.lin.youtube.hub.backend.api.dto.ItemResponse;
 import ch.lin.youtube.hub.backend.api.dto.UpdateItemRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 @ExtendWith(MockitoExtension.class)
 class ItemControllerTest {
@@ -240,5 +245,34 @@ class ItemControllerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isEqualTo(mockStatuses);
+    }
+
+    @Test
+    void exportItems_ShouldSetHeaderAndCallService() throws Exception {
+        HttpServletResponse response = mock(HttpServletResponse.class);
+        PrintWriter writer = mock(PrintWriter.class);
+        when(response.getWriter()).thenReturn(writer);
+
+        itemController.exportItems(response);
+
+        verify(response).setHeader("Content-Disposition", "attachment; filename=\"items_export.csv\"");
+        verify(itemService).exportItemsToCsv(writer);
+    }
+
+    @Test
+    void importItems_ShouldCallServiceAndReturnSuccess() throws Exception {
+        MultipartFile file = mock(MultipartFile.class);
+        InputStream inputStream = mock(InputStream.class);
+        when(file.getInputStream()).thenReturn(inputStream);
+
+        ResponseEntity<ApiResponse<Map<String, Object>>> response = itemController.importItems(file);
+
+        verify(itemService).importItemsFromCsv(inputStream);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        ApiResponse<Map<String, Object>> body = response.getBody();
+        Objects.requireNonNull(body);
+        Map<String, Object> data = body.getData();
+        assertThat(data.get("message")).isEqualTo("Successfully imported items from CSV.");
+        assertThat(data.get("notFoundVideoIds")).isNotNull();
     }
 }

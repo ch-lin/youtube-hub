@@ -23,12 +23,19 @@
  *===========================================================================*/
 package ch.lin.youtube.hub.backend.api.app.service;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.StringWriter;
+import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -37,6 +44,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import org.mockito.Mock;
@@ -56,6 +65,7 @@ import ch.lin.platform.exception.InvalidRequestException;
 import ch.lin.youtube.hub.backend.api.app.repository.ItemRepository;
 import ch.lin.youtube.hub.backend.api.app.repository.TagRepository;
 import ch.lin.youtube.hub.backend.api.app.service.model.ItemUpdateResult;
+import ch.lin.youtube.hub.backend.api.common.exception.CsvProcessingException;
 import ch.lin.youtube.hub.backend.api.common.exception.ItemNotFoundException;
 import ch.lin.youtube.hub.backend.api.domain.model.DownloadInfo;
 import ch.lin.youtube.hub.backend.api.domain.model.Item;
@@ -522,5 +532,241 @@ class ItemServiceImplTest {
         assertThat(result).hasSize(2)
                 .containsEntry("vid1", ProcessingStatus.DOWNLOADED)
                 .containsEntry("vid2", ProcessingStatus.PENDING);
+    }
+
+    @Test
+    void exportItemsToCsv_ShouldWriteCorrectData() {
+        StringWriter writer = new StringWriter();
+
+        ItemRepository.ItemExportProjection proj1 = mock(ItemRepository.ItemExportProjection.class);
+        when(proj1.getVideoId()).thenReturn("vid1");
+        when(proj1.getStatus()).thenReturn(ProcessingStatus.DOWNLOADED);
+        when(proj1.getWidth()).thenReturn(1920);
+        when(proj1.getHeight()).thenReturn(1080);
+
+        ItemRepository.ItemExportProjection proj2 = mock(ItemRepository.ItemExportProjection.class);
+        when(proj2.getVideoId()).thenReturn("vid2");
+        when(proj2.getStatus()).thenReturn(null);
+        when(proj2.getWidth()).thenReturn(null);
+        when(proj2.getHeight()).thenReturn(null);
+
+        when(itemRepository.streamAllForExport()).thenReturn(Stream.of(proj1, proj2));
+
+        itemService.exportItemsToCsv(writer);
+
+        String output = writer.toString().replace("\r\n", "\n");
+        assertThat(output).isEqualTo("""
+                                     videoId,status,width,height
+                                     vid1,DOWNLOADED,1920,1080
+                                     vid2,,,
+                                     """);
+    }
+
+    @Test
+    void exportItemsToCsv_ShouldWrapIOException() throws IOException {
+        Writer writer = new Writer() {
+            @Override
+            public void write(char[] cbuf, int off, int len) throws IOException {
+                throw new IOException("Disk full");
+            }
+
+            @Override
+            public void write(int c) throws IOException {
+                throw new IOException("Disk full");
+            }
+
+            @Override
+            public void write(String str) throws IOException {
+                throw new IOException("Disk full");
+            }
+
+            @Override
+            public void write(String str, int off, int len) throws IOException {
+                throw new IOException("Disk full");
+            }
+
+            @Override
+            public Writer append(CharSequence csq) throws IOException {
+                throw new IOException("Disk full");
+            }
+
+            @Override
+            public Writer append(CharSequence csq, int start, int end) throws IOException {
+                throw new IOException("Disk full");
+            }
+
+            @Override
+            public Writer append(char c) throws IOException {
+                throw new IOException("Disk full");
+            }
+
+            @Override
+            public void flush() {
+            }
+
+            @Override
+            public void close() {
+            }
+        };
+
+        assertThatThrownBy(() -> itemService.exportItemsToCsv(writer))
+                .isInstanceOf(CsvProcessingException.class)
+                .hasMessageContaining("Failed to export items to CSV");
+    }
+
+    @Test
+    void exportItemsToCsv_ShouldWrapIOExceptionInsideStream() throws IOException {
+        Writer writer = new Writer() {
+            private void check(String str) throws IOException {
+                if (str != null && str.contains("vid1")) {
+                    throw new IOException("Stream error");
+                }
+            }
+
+            @Override
+            public void write(char[] cbuf, int off, int len) throws IOException {
+                check(new String(cbuf, off, len));
+            }
+
+            @Override
+            public void write(int c) throws IOException {
+                check(String.valueOf((char) c));
+            }
+
+            @Override
+            public void write(String str) throws IOException {
+                check(str);
+            }
+
+            @Override
+            public void write(String str, int off, int len) throws IOException {
+                check(str.substring(off, off + len));
+            }
+
+            @Override
+            public Writer append(CharSequence csq) throws IOException {
+                check(csq == null ? null : csq.toString());
+                return this;
+            }
+
+            @Override
+            public Writer append(CharSequence csq, int start, int end) throws IOException {
+                check(csq == null ? null : csq.subSequence(start, end).toString());
+                return this;
+            }
+
+            @Override
+            public Writer append(char c) throws IOException {
+                check(String.valueOf(c));
+                return this;
+            }
+
+            @Override
+            public void flush() {
+            }
+
+            @Override
+            public void close() {
+            }
+        };
+
+        ItemRepository.ItemExportProjection proj = mock(ItemRepository.ItemExportProjection.class);
+        when(proj.getVideoId()).thenReturn("vid1");
+        when(itemRepository.streamAllForExport()).thenReturn(Stream.of(proj));
+
+        assertThatThrownBy(() -> itemService.exportItemsToCsv(writer))
+                .isInstanceOf(CsvProcessingException.class)
+                .hasMessageContaining("Failed to export items to CSV")
+                .hasRootCauseMessage("Stream error");
+    }
+
+    @Test
+    @SuppressWarnings({"null"})
+    void importItemsFromCsv_ShouldUpdateItems_WhenCsvIsValid() {
+        String csvContent = """
+                            videoId,status,width,height
+                            vid1,DOWNLOADED,1920,1080
+                            vid2,PENDING,1280,720
+                            
+                            vid3,FAILED,,
+                            vid4
+                            vid5,,800,600
+                            vid6,   ,   ,   
+                            """ // Blank line testing
+                // Partial empty testing
+                ; // Only ID testing and blank status testing
+        InputStream inputStream = new ByteArrayInputStream(csvContent.getBytes(StandardCharsets.UTF_8));
+
+        Item item1 = new Item("vid1");
+        Item item2 = new Item("vid2");
+        Item item3 = new Item("vid3");
+        Item item4 = new Item("vid4");
+        Item item5 = new Item("vid5");
+        Item item6 = new Item("vid6");
+
+        when(itemRepository.findAllByVideoIdIn(anyList()))
+                .thenReturn(List.of(item1, item2, item3, item4, item5, item6));
+
+        List<String> notFound = itemService.importItemsFromCsv(inputStream);
+        assertThat(notFound).isEmpty(); // All videos were properly matched in the mock
+
+        assertThat(item1.getStatus()).isEqualTo(ProcessingStatus.DOWNLOADED);
+        assertThat(item1.getWidth()).isEqualTo(1920);
+        assertThat(item1.getHeight()).isEqualTo(1080);
+
+        assertThat(item3.getStatus()).isEqualTo(ProcessingStatus.FAILED);
+        assertThat(item3.getWidth()).isNull();
+        assertThat(item3.getHeight()).isNull();
+
+        assertThat(item5.getStatus()).isEqualTo(ProcessingStatus.NEW); // Should remain unchanged
+        assertThat(item5.getWidth()).isEqualTo(800);
+        assertThat(item5.getHeight()).isEqualTo(600);
+
+        assertThat(item6.getStatus()).isEqualTo(ProcessingStatus.NEW); // Whitespace should be ignored
+        assertThat(item6.getWidth()).isNull();
+        assertThat(item6.getHeight()).isNull();
+
+        verify(itemRepository).saveAll(any());
+    }
+
+    @Test
+    @SuppressWarnings({"null"})
+    void importItemsFromCsv_ShouldProcessInBatches() {
+        StringBuilder csvContent = new StringBuilder("videoId,status,width,height\n");
+        for (int i = 0; i < 505; i++) {
+            csvContent.append("vid").append(i).append(",DOWNLOADED,1920,1080\n");
+        }
+        InputStream inputStream = new ByteArrayInputStream(csvContent.toString().getBytes(StandardCharsets.UTF_8));
+
+        when(itemRepository.findAllByVideoIdIn(anyList())).thenReturn(Collections.emptyList());
+        List<String> notFound = itemService.importItemsFromCsv(inputStream);
+
+        assertThat(notFound).hasSize(505); // All 505 should be reported as "not found" since findAll returned empty
+
+        verify(itemRepository, times(2)).findAllByVideoIdIn(anyList());
+        verify(itemRepository, times(2)).saveAll(any());
+    }
+
+    @Test
+    @SuppressWarnings({"null"})
+    void importItemsFromCsv_ShouldDoNothing_WhenCsvHasOnlyHeaderOrEmpty() {
+        String csvContent = "videoId,status,width,height\n";
+        InputStream inputStream = new ByteArrayInputStream(csvContent.getBytes(StandardCharsets.UTF_8));
+
+        List<String> notFound = itemService.importItemsFromCsv(inputStream);
+        assertThat(notFound).isEmpty();
+
+        verify(itemRepository, never()).findAllByVideoIdIn(anyList());
+        verify(itemRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void importItemsFromCsv_ShouldWrapIOException() throws IOException {
+        InputStream inputStream = mock(InputStream.class);
+        when(inputStream.read(any(byte[].class), anyInt(), anyInt())).thenThrow(new IOException("Stream failed"));
+
+        assertThatThrownBy(() -> itemService.importItemsFromCsv(inputStream))
+                .isInstanceOf(CsvProcessingException.class)
+                .hasMessageContaining("Failed to import items from CSV");
     }
 }

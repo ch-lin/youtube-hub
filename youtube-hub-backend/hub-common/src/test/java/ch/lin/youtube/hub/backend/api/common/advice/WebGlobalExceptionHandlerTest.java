@@ -35,6 +35,7 @@ import ch.lin.platform.api.ApiError;
 import ch.lin.platform.api.ApiResponse;
 import ch.lin.youtube.hub.backend.api.common.exception.ChannelAlreadyExistsException;
 import ch.lin.youtube.hub.backend.api.common.exception.ChannelNotFoundException;
+import ch.lin.youtube.hub.backend.api.common.exception.CsvProcessingException;
 import ch.lin.youtube.hub.backend.api.common.exception.YoutubeApiAuthException;
 import ch.lin.youtube.hub.backend.api.common.exception.YoutubeApiRequestException;
 
@@ -102,5 +103,19 @@ class WebGlobalExceptionHandlerTest {
         assertThat(apiResponse.getStatus()).isEqualTo("failure");
         assertThat(apiResponse.getData().getCode()).isEqualTo("YOUTUBE_API_AUTH_ERROR");
         assertThat(apiResponse.getData().getMessage()).isEqualTo("Auth Failed");
+    }
+
+    @Test
+    void handleCsvProcessingException_ShouldReturnInternalServerError() {
+        CsvProcessingException ex = new CsvProcessingException("CSV Error");
+        ResponseEntity<ApiResponse<ApiError>> response = exceptionHandler.handleCsvProcessingException(ex);
+
+        ApiResponse<ApiError> apiResponse = response.getBody();
+        Objects.requireNonNull(apiResponse);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(apiResponse.getStatus()).isEqualTo("failure");
+        assertThat(apiResponse.getData().getCode()).isEqualTo("INTERNAL_SERVER_ERROR");
+        assertThat(apiResponse.getData().getMessage()).isEqualTo("CSV Error");
     }
 }

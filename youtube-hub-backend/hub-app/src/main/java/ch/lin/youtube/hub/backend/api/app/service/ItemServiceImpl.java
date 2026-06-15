@@ -23,6 +23,12 @@
  *===========================================================================*/
 package ch.lin.youtube.hub.backend.api.app.service;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -33,6 +39,10 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.CSVRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -40,11 +50,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import ch.lin.platform.exception.InvalidRequestException;
 import ch.lin.youtube.hub.backend.api.app.repository.ItemRepository;
 import ch.lin.youtube.hub.backend.api.app.repository.TagRepository;
 import ch.lin.youtube.hub.backend.api.app.service.model.ItemUpdateResult;
+import ch.lin.youtube.hub.backend.api.common.exception.CsvProcessingException;
 import ch.lin.youtube.hub.backend.api.common.exception.ItemNotFoundException;
 import ch.lin.youtube.hub.backend.api.domain.model.DownloadInfo;
 import ch.lin.youtube.hub.backend.api.domain.model.Item;
@@ -350,5 +362,98 @@ public class ItemServiceImpl implements ItemService {
                         ItemRepository.ItemStatusProjection::getVideoId,
                         ItemRepository.ItemStatusProjection::getStatus
                 ));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void exportItemsToCsv(Writer writer) {
+        try {
+            CSVFormat csvFormat = CSVFormat.DEFAULT.builder()
+                    .setHeader("videoId", "status", "width", "height")
+                    .get();
+
+            try (CSVPrinter printer = new CSVPrinter(writer, csvFormat); java.util.stream.Stream<ch.lin.youtube.hub.backend.api.app.repository.ItemRepository.ItemExportProjection> itemStream = itemRepository.streamAllForExport()) {
+                itemStream.forEach(item -> {
+                    try {
+                        String statusStr = item.getStatus() != null ? item.getStatus().name() : "";
+                        String widthStr = item.getWidth() != null ? String.valueOf(item.getWidth()) : "";
+                        String heightStr = item.getHeight() != null ? String.valueOf(item.getHeight()) : "";
+
+                        printer.printRecord(item.getVideoId(), statusStr, widthStr, heightStr);
+                    } catch (java.io.IOException e) {
+                        throw new RuntimeException("Error writing to CSV stream", e);
+                    }
+                });
+            }
+        } catch (IOException | RuntimeException e) {
+            logger.error("Failed to export items to CSV", e);
+            throw new CsvProcessingException("Failed to export items to CSV", e);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional
+    public List<String> importItemsFromCsv(InputStream inputStream) {
+        CSVFormat csvFormat = CSVFormat.DEFAULT.builder()
+                .setHeader() // Auto-detect header from the first line
+                .setSkipHeaderRecord(true)
+                .setIgnoreEmptyLines(true)
+                .get();
+
+        List<String> notFoundVideoIds = new ArrayList<>();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8)); CSVParser parser = csvFormat.parse(reader)) {
+
+            List<CSVRecord> batch = new ArrayList<>();
+
+            for (CSVRecord record : parser) {
+                batch.add(record);
+
+                // Process in batches of 500 to avoid loading entire file into memory
+                if (batch.size() >= 500) {
+                    processImportBatch(batch, notFoundVideoIds);
+                    batch.clear();
+                }
+            }
+
+            if (!batch.isEmpty()) {
+                processImportBatch(batch, notFoundVideoIds);
+            }
+            return notFoundVideoIds;
+        } catch (IOException | RuntimeException e) {
+            logger.error("Failed to import items from CSV", e);
+            throw new CsvProcessingException("Failed to import items from CSV", e);
+        }
+    }
+
+    private void processImportBatch(List<CSVRecord> batch, List<String> notFoundVideoIds) {
+        List<String> videoIds = batch.stream().map(record -> record.get(0)).collect(Collectors.toList());
+        // Use findAllByVideoIdIn because videoId is a string business key, not the Long Primary Key
+        Map<String, Item> itemsMap = itemRepository.findAllByVideoIdIn(videoIds).stream()
+                .collect(Collectors.toMap(Item::getVideoId, item -> item));
+
+        for (CSVRecord record : batch) {
+            String videoId = record.get(0);
+            Item item = itemsMap.get(videoId);
+            if (item != null) {
+                if (record.size() > 1 && StringUtils.hasText(record.get(1))) {
+                    item.setStatus(ProcessingStatus.valueOf(record.get(1)));
+                }
+                if (record.size() > 2 && StringUtils.hasText(record.get(2))) {
+                    item.setWidth(Integer.valueOf(record.get(2)));
+                }
+                if (record.size() > 3 && StringUtils.hasText(record.get(3))) {
+                    item.setHeight(Integer.valueOf(record.get(3)));
+                }
+            } else {
+                logger.warn("Video ID '{}' from CSV not found in the database. Skipping import for this item.", videoId);
+                notFoundVideoIds.add(videoId);
+            }
+        }
+        itemRepository.saveAll(Objects.requireNonNull(itemsMap.values()));
     }
 }
