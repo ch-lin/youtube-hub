@@ -154,7 +154,8 @@ public class VideoFetchServiceImpl implements VideoFetchService {
                     && e.getMessage() != null && e.getMessage().contains("API key not valid")) {
                 throw new YoutubeApiAuthException("The provided YouTube API key is not valid.", e);
             }
-            throw new YoutubeApiRequestException("Failed to fetch video details from YouTube API for video IDs: " + videoIds, e);
+            throw new YoutubeApiRequestException(
+                    "Failed to fetch video details from YouTube API for video IDs: " + videoIds, e);
         }
         return newItems;
     }
@@ -172,7 +173,7 @@ public class VideoFetchServiceImpl implements VideoFetchService {
         }
 
         int updatedCount = 0;
-        List<String> videoIdsList = existingItemsToUpdate.stream().map(Item::getVideoId).toList();
+        List<String> videoIdsList = existingItemsToUpdate.stream().map(item -> item.getVideoId()).toList();
         String videoIds = String.join(",", videoIdsList);
 
         Map<String, String> params = new HashMap<>();
@@ -194,7 +195,8 @@ public class VideoFetchServiceImpl implements VideoFetchService {
             JsonNode videoItemsNode = root.path("items");
 
             if (videoItemsNode.isMissingNode() || !videoItemsNode.isArray()) {
-                logger.warn("    -> No detailed video items found for update check in API response for video IDs: {}", videoIds);
+                logger.warn("    -> No detailed video items found for update check in API response for video IDs: {}",
+                        videoIds);
                 return 0;
             }
 
@@ -214,7 +216,8 @@ public class VideoFetchServiceImpl implements VideoFetchService {
 
                 String newTitle = videoSnippet.path("title").asText();
                 if (!existingItem.getTitle().equals(newTitle)) {
-                    logger.info("    -> Updating title for video {}: '{}' -> '{}'", videoId, existingItem.getTitle(), newTitle);
+                    logger.info("    -> Updating title for video {}: '{}' -> '{}'", videoId, existingItem.getTitle(),
+                            newTitle);
                     existingItem.setTitle(newTitle);
                     updated = true;
                 }
@@ -230,7 +233,8 @@ public class VideoFetchServiceImpl implements VideoFetchService {
                 if (publishedAtStr != null) {
                     OffsetDateTime newPublishedAt = OffsetDateTime.parse(publishedAtStr);
                     if (!newPublishedAt.equals(existingItem.getVideoPublishedAt())) {
-                        logger.info("    -> Updating publishedAt for video {}: {} -> {}", videoId, existingItem.getVideoPublishedAt(), newPublishedAt);
+                        logger.info("    -> Updating publishedAt for video {}: {} -> {}", videoId,
+                                existingItem.getVideoPublishedAt(), newPublishedAt);
                         existingItem.setVideoPublishedAt(newPublishedAt);
                         updated = true;
                     }
@@ -239,7 +243,8 @@ public class VideoFetchServiceImpl implements VideoFetchService {
                 String liveBroadcastContentStr = videoSnippet.path("liveBroadcastContent").asText("NONE").toUpperCase();
                 LiveBroadcastContent newLiveStatus = LiveBroadcastContent.valueOf(liveBroadcastContentStr);
                 if (existingItem.getLiveBroadcastContent() != newLiveStatus) {
-                    logger.info("    -> Updating live status for video {}: {} -> {}", videoId, existingItem.getLiveBroadcastContent(), newLiveStatus);
+                    logger.info("    -> Updating live status for video {}: {} -> {}", videoId,
+                            existingItem.getLiveBroadcastContent(), newLiveStatus);
                     existingItem.setLiveBroadcastContent(newLiveStatus);
                     updated = true;
                 }
@@ -250,7 +255,8 @@ public class VideoFetchServiceImpl implements VideoFetchService {
                     if (scheduledTimeStr != null) {
                         OffsetDateTime newScheduledTime = OffsetDateTime.parse(scheduledTimeStr);
                         if (!newScheduledTime.equals(existingItem.getScheduledStartTime())) {
-                            logger.info("    -> Updating scheduled time for video {}: {} -> {}", videoId, existingItem.getScheduledStartTime(), newScheduledTime);
+                            logger.info("    -> Updating scheduled time for video {}: {} -> {}", videoId,
+                                    existingItem.getScheduledStartTime(), newScheduledTime);
                             existingItem.setScheduledStartTime(newScheduledTime);
                             updated = true;
                         }
@@ -272,7 +278,8 @@ public class VideoFetchServiceImpl implements VideoFetchService {
                     && e.getMessage() != null && e.getMessage().contains("API key not valid")) {
                 throw new YoutubeApiAuthException("The provided YouTube API key is not valid.", e);
             }
-            throw new YoutubeApiRequestException("Failed to fetch video details for update check from YouTube API for video IDs: " + videoIds, e);
+            throw new YoutubeApiRequestException(
+                    "Failed to fetch video details for update check from YouTube API for video IDs: " + videoIds, e);
         }
         return updatedCount;
     }
@@ -290,7 +297,7 @@ public class VideoFetchServiceImpl implements VideoFetchService {
         }
 
         int updatedCount = 0;
-        List<String> videoIdsList = itemsToUpdate.stream().map(Item::getVideoId).toList();
+        List<String> videoIdsList = itemsToUpdate.stream().map(item -> item.getVideoId()).toList();
         String videoIds = String.join(",", videoIdsList);
 
         Map<String, String> params = new HashMap<>();
@@ -341,7 +348,8 @@ public class VideoFetchServiceImpl implements VideoFetchService {
                     && e.getMessage() != null && e.getMessage().contains("API key not valid")) {
                 throw new YoutubeApiAuthException("The provided YouTube API key is not valid.", e);
             }
-            throw new YoutubeApiRequestException("Failed to fetch statistics from YouTube API for video IDs: " + videoIds, e);
+            throw new YoutubeApiRequestException(
+                    "Failed to fetch statistics from YouTube API for video IDs: " + videoIds, e);
         }
         return updatedCount;
     }
@@ -349,7 +357,7 @@ public class VideoFetchServiceImpl implements VideoFetchService {
     /**
      * Checks if the daily quota limit has been reached.
      *
-     * @param limit The daily quota limit.
+     * @param limit     The daily quota limit.
      * @param threshold The safety threshold.
      * @throws QuotaExceededException if the daily quota limit is reached.
      */
@@ -379,16 +387,16 @@ public class VideoFetchServiceImpl implements VideoFetchService {
      * starting from the highest resolution and falling back to lower ones.
      *
      * @param thumbnailsNode The 'thumbnails' JsonNode from the YouTube API
-     * response.
+     *                       response.
      * @return The URL of the best available thumbnail, or null if none are
-     * found.
+     *         found.
      */
     private String getBestAvailableThumbnailUrl(JsonNode thumbnailsNode) {
         if (thumbnailsNode == null || thumbnailsNode.isMissingNode()) {
             return null;
         }
         // Order of preference from highest to lowest resolution
-        final String[] resolutions = {"maxres", "standard", "high", "medium", "default"};
+        final String[] resolutions = { "maxres", "standard", "high", "medium", "default" };
         for (String res : resolutions) {
             String url = thumbnailsNode.path(res).path("url").asText(null);
             if (url != null) {
@@ -402,7 +410,7 @@ public class VideoFetchServiceImpl implements VideoFetchService {
      * Extracts statistics from the video item JSON node and appends them to the
      * Item's history.
      *
-     * @param item The Item entity to update.
+     * @param item          The Item entity to update.
      * @param videoItemNode The API response node for the video.
      * @return true if statistics were found and appended, false otherwise.
      */

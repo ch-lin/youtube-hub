@@ -83,7 +83,7 @@ public class YoutubeApiUsageServiceImpl implements YoutubeApiUsageService {
     public boolean hasSufficientQuota(long dailyQuotaLimit, long safetyThreshold) {
         LocalDate today = YoutubeApiUsage.getCurrentQuotaDate();
         long currentUsage = youtubeApiUsageRepository.findByUsageDate(today)
-                .map(YoutubeApiUsage::getQuotaUsed)
+                .map(usage -> usage.getQuotaUsed())
                 .orElse(0L);
         return (currentUsage + safetyThreshold) < dailyQuotaLimit;
     }
