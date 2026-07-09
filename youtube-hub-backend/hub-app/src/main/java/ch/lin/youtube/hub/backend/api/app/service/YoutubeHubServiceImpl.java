@@ -110,14 +110,15 @@ public class YoutubeHubServiceImpl implements YoutubeHubService {
     /**
      * Constructs a new YoutubeHubServiceImpl with the required dependencies.
      *
-     * @param channelRepository the repository for channel data access
-     * @param itemRepository the repository for item data access
-     * @param playlistRepository the repository for playlist data access
-     * @param tagRepository the repository for tag data access
+     * @param channelRepository      the repository for channel data access
+     * @param itemRepository         the repository for item data access
+     * @param playlistRepository     the repository for playlist data access
+     * @param tagRepository          the repository for tag data access
      * @param downloadInfoRepository the repository for download info data
-     * access
-     * @param configsService the service for accessing application configuration
-     * @param thumbnailService the service for downloading thumbnails
+     *                               access
+     * @param configsService         the service for accessing application
+     *                               configuration
+     * @param thumbnailService       the service for downloading thumbnails
      */
     public YoutubeHubServiceImpl(ChannelRepository channelRepository, ItemRepository itemRepository,
             PlaylistRepository playlistRepository, TagRepository tagRepository,
@@ -161,7 +162,8 @@ public class YoutubeHubServiceImpl implements YoutubeHubService {
      * {@inheritDoc}
      */
     @Override
-    public Map<String, Object> processJob(String key, String configName, Long delayInMilliseconds, OffsetDateTime publishedAfter,
+    public Map<String, Object> processJob(String key, String configName, Long delayInMilliseconds,
+            OffsetDateTime publishedAfter,
             boolean forcePublishedAfter, List<String> channelIds) {
         HubConfig resolvedConfig;
         if (configName != null && !configName.isBlank()) {
@@ -180,7 +182,8 @@ public class YoutubeHubServiceImpl implements YoutubeHubService {
         }
 
         if (apiKey == null || apiKey.isBlank()) {
-            throw new InvalidRequestException("A YouTube API key is required. None was provided in the request, and no default key is configured.");
+            throw new InvalidRequestException(
+                    "A YouTube API key is required. None was provided in the request, and no default key is configured.");
         }
 
         if (delayInMilliseconds == null || delayInMilliseconds < 0) {
@@ -216,7 +219,8 @@ public class YoutubeHubServiceImpl implements YoutubeHubService {
                             channel, client, apiKey, delayInMilliseconds, quotaLimit, quotaThreshold);
 
                     PlaylistProcessingResult channelResult = channelProcessingService.processPlaylistItems(
-                            playlist, client, apiKey, publishedAfter, forcePublishedAfter, delayInMilliseconds, quotaLimit, quotaThreshold);
+                            playlist, client, apiKey, publishedAfter, forcePublishedAfter, delayInMilliseconds,
+                            quotaLimit, quotaThreshold);
 
                     newItemsCount += channelResult.getNewItemsCount();
                     standardVideoCount += channelResult.getStandardVideoCount();
@@ -225,7 +229,8 @@ public class YoutubeHubServiceImpl implements YoutubeHubService {
                     updatedItemsCount += channelResult.getUpdatedItemsCount();
                     processedChannelsCount++;
                 } catch (QuotaExceededException e) {
-                    logger.warn("Job stopped early: Global quota limit reached while processing {}.", channel.getTitle());
+                    logger.warn("Job stopped early: Global quota limit reached while processing {}.",
+                            channel.getTitle());
                     break;
                 } catch (YoutubeApiRequestException e) {
                     logger.error("Failed to process channel {}: {}", channel.getChannelId(), e.getMessage(), e);
@@ -386,7 +391,7 @@ public class YoutubeHubServiceImpl implements YoutubeHubService {
      * parameter.
      *
      * @param url The YouTube video URL (e.g.,
-     * "https://www.youtube.com/watch?v=videoId").
+     *            "https://www.youtube.com/watch?v=videoId").
      * @return The video ID string, or null if it cannot be parsed.
      */
     private String parseVideoIdFromUrl(String url) {
@@ -442,7 +447,8 @@ public class YoutubeHubServiceImpl implements YoutubeHubService {
                 .toList();
 
         if (validItemsToDownload.isEmpty()) {
-            logger.info("All requested items are already processing or in an invalid state. Skipping external downloader call.");
+            logger.info(
+                    "All requested items are already processing or in an invalid state. Skipping external downloader call.");
             return Map.of("createdTasks", 0);
         }
 
@@ -488,7 +494,7 @@ public class YoutubeHubServiceImpl implements YoutubeHubService {
                 }
 
                 Map<String, Item> itemMap = validItemsToDownload.stream()
-                        .collect(Collectors.toMap(Item::getVideoId, item -> item));
+                        .collect(Collectors.toMap(item -> item.getVideoId(), item -> item));
                 List<DownloadInfo> newDownloadInfos = new ArrayList<>();
                 List<Item> updatedItems = new ArrayList<>();
 
@@ -539,7 +545,8 @@ public class YoutubeHubServiceImpl implements YoutubeHubService {
         OffsetDateTime threshold = OffsetDateTime.now().minusDays(syncDays);
         List<Item> activeItems;
         if (channelIds != null && !channelIds.isEmpty()) {
-            activeItems = itemRepository.findAllByVideoPublishedAtAfterAndPlaylistChannelChannelIdIn(threshold, channelIds);
+            activeItems = itemRepository.findAllByVideoPublishedAtAfterAndPlaylistChannelChannelIdIn(threshold,
+                    channelIds);
         } else {
             activeItems = itemRepository.findAllByVideoPublishedAtAfter(threshold);
         }
@@ -567,7 +574,8 @@ public class YoutubeHubServiceImpl implements YoutubeHubService {
                 List<Item> batch = activeItems.subList(i, end);
 
                 try {
-                    int updated = videoFetchService.syncStatisticsForItems(client, apiKey, batch, delay, quotaLimit, quotaThreshold);
+                    int updated = videoFetchService.syncStatisticsForItems(client, apiKey, batch, delay, quotaLimit,
+                            quotaThreshold);
                     totalUpdated += updated;
                 } catch (YoutubeApiRequestException e) {
                     logger.error("Failed to sync statistics for batch starting at index {}", i, e);
@@ -598,9 +606,11 @@ public class YoutubeHubServiceImpl implements YoutubeHubService {
         logger.info("Starting job to reset UNAVAILABLE thumbnails to PENDING...");
         int updatedCount;
         if (videoIds == null || videoIds.isEmpty()) {
-            updatedCount = itemRepository.resetAllUnavailableThumbnails(ThumbnailStatus.PENDING, ThumbnailStatus.UNAVAILABLE);
+            updatedCount = itemRepository.resetAllUnavailableThumbnails(ThumbnailStatus.PENDING,
+                    ThumbnailStatus.UNAVAILABLE);
         } else {
-            updatedCount = itemRepository.resetUnavailableThumbnailsByVideoIds(videoIds, ThumbnailStatus.PENDING, ThumbnailStatus.UNAVAILABLE);
+            updatedCount = itemRepository.resetUnavailableThumbnailsByVideoIds(videoIds, ThumbnailStatus.PENDING,
+                    ThumbnailStatus.UNAVAILABLE);
         }
         logger.info("Successfully reset {} thumbnails.", updatedCount);
         return updatedCount;
@@ -660,8 +670,10 @@ public class YoutubeHubServiceImpl implements YoutubeHubService {
                 for (Item item : pendingItems.getContent()) {
                     thumbnailService.downloadThumbnail(item);
 
-                    // Check if the state changed to ensure we aren't stuck on temporary network failures
-                    if (item.getThumbnailStatus() == ThumbnailStatus.DOWNLOADED || item.getThumbnailStatus() == ThumbnailStatus.UNAVAILABLE) {
+                    // Check if the state changed to ensure we aren't stuck on temporary network
+                    // failures
+                    if (item.getThumbnailStatus() == ThumbnailStatus.DOWNLOADED
+                            || item.getThumbnailStatus() == ThumbnailStatus.UNAVAILABLE) {
                         progressMade = true;
                     }
 
@@ -675,7 +687,8 @@ public class YoutubeHubServiceImpl implements YoutubeHubService {
                 }
 
                 if (!progressMade) {
-                    logger.warn("No progress made in this batch (possibly due to network/temporary issues). Halting sync to prevent infinite loops.");
+                    logger.warn(
+                            "No progress made in this batch (possibly due to network/temporary issues). Halting sync to prevent infinite loops.");
                     break;
                 }
             }

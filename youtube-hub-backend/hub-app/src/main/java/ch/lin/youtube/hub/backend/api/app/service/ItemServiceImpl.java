@@ -85,7 +85,7 @@ public class ItemServiceImpl implements ItemService {
      * Constructs the service with its required repository dependencies.
      *
      * @param itemRepository The repository for {@link Item} entities.
-     * @param tagRepository The repository for {@link Tag} entities.
+     * @param tagRepository  The repository for {@link Tag} entities.
      */
     public ItemServiceImpl(ItemRepository itemRepository, TagRepository tagRepository) {
         this.itemRepository = itemRepository;
@@ -149,7 +149,8 @@ public class ItemServiceImpl implements ItemService {
             // Specification for items that are not yet successfully downloaded (i.e., are
             // NEW, PENDING, DOWNLOADING, FAILED, or WATCHED).
             Specification<Item> isNotDownloaded = (root, query, cb) -> root.get("status").in(ProcessingStatus.NEW,
-                    ProcessingStatus.PENDING, ProcessingStatus.DOWNLOADING, ProcessingStatus.FAILED, ProcessingStatus.WATCHED);
+                    ProcessingStatus.PENDING, ProcessingStatus.DOWNLOADING, ProcessingStatus.FAILED,
+                    ProcessingStatus.WATCHED);
 
             // Specification for condition 1: A standard video that is not a live stream or
             // premiere.
@@ -248,9 +249,9 @@ public class ItemServiceImpl implements ItemService {
      * tag and file size, adding warnings to the result if any are found.
      *
      * @throws InvalidRequestException if the video ID is invalid or the file
-     * size is negative.
-     * @throws ItemNotFoundException if no item with the given video ID is
-     * found.
+     *                                 size is negative.
+     * @throws ItemNotFoundException   if no item with the given video ID is
+     *                                 found.
      */
     @Override
     @Transactional
@@ -283,7 +284,7 @@ public class ItemServiceImpl implements ItemService {
                         .filter(di -> downloadTaskId.equals(di.getDownloadTaskId()))
                         .findFirst()
                         .orElseThrow(() -> new ItemNotFoundException(
-                        "DownloadInfo with taskId " + downloadTaskId + " not found for item " + videoId));
+                                "DownloadInfo with taskId " + downloadTaskId + " not found for item " + videoId));
             } else {
                 // Try to find an existing DownloadInfo with no task ID (manual/external)
                 downloadInfo = item.getDownloadInfos().stream()
@@ -325,7 +326,7 @@ public class ItemServiceImpl implements ItemService {
                         if (!duplicates.isEmpty()) {
                             String duplicateDetails = duplicates.stream()
                                     .map(duplicateItem -> String.format("'%s' (ID: %s)", duplicateItem.getTitle(),
-                                    duplicateItem.getVideoId()))
+                                            duplicateItem.getVideoId()))
                                     .reduce((s1, s2) -> s1 + ", " + s2).orElse("");
                             warnings.add(
                                     String.format(
@@ -359,9 +360,8 @@ public class ItemServiceImpl implements ItemService {
 
         return itemRepository.findStatusesByVideoIds(videoIds).stream()
                 .collect(Collectors.toMap(
-                        ItemRepository.ItemStatusProjection::getVideoId,
-                        ItemRepository.ItemStatusProjection::getStatus
-                ));
+                        proj -> proj.getVideoId(),
+                        proj -> proj.getStatus()));
     }
 
     /**
@@ -374,7 +374,9 @@ public class ItemServiceImpl implements ItemService {
                     .setHeader("videoId", "status", "width", "height")
                     .get();
 
-            try (CSVPrinter printer = new CSVPrinter(writer, csvFormat); java.util.stream.Stream<ch.lin.youtube.hub.backend.api.app.repository.ItemRepository.ItemExportProjection> itemStream = itemRepository.streamAllForExport()) {
+            try (CSVPrinter printer = new CSVPrinter(writer, csvFormat);
+                    java.util.stream.Stream<ch.lin.youtube.hub.backend.api.app.repository.ItemRepository.ItemExportProjection> itemStream = itemRepository
+                            .streamAllForExport()) {
                 itemStream.forEach(item -> {
                     try {
                         String statusStr = item.getStatus() != null ? item.getStatus().name() : "";
@@ -406,7 +408,8 @@ public class ItemServiceImpl implements ItemService {
                 .get();
 
         List<String> notFoundVideoIds = new ArrayList<>();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8)); CSVParser parser = csvFormat.parse(reader)) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+                CSVParser parser = csvFormat.parse(reader)) {
 
             List<CSVRecord> batch = new ArrayList<>();
 
@@ -432,9 +435,10 @@ public class ItemServiceImpl implements ItemService {
 
     private void processImportBatch(List<CSVRecord> batch, List<String> notFoundVideoIds) {
         List<String> videoIds = batch.stream().map(record -> record.get(0)).collect(Collectors.toList());
-        // Use findAllByVideoIdIn because videoId is a string business key, not the Long Primary Key
+        // Use findAllByVideoIdIn because videoId is a string business key, not the Long
+        // Primary Key
         Map<String, Item> itemsMap = itemRepository.findAllByVideoIdIn(videoIds).stream()
-                .collect(Collectors.toMap(Item::getVideoId, item -> item));
+                .collect(Collectors.toMap(item -> item.getVideoId(), item -> item));
 
         for (CSVRecord record : batch) {
             String videoId = record.get(0);
@@ -450,7 +454,8 @@ public class ItemServiceImpl implements ItemService {
                     item.setHeight(Integer.valueOf(record.get(3)));
                 }
             } else {
-                logger.warn("Video ID '{}' from CSV not found in the database. Skipping import for this item.", videoId);
+                logger.warn("Video ID '{}' from CSV not found in the database. Skipping import for this item.",
+                        videoId);
                 notFoundVideoIds.add(videoId);
             }
         }

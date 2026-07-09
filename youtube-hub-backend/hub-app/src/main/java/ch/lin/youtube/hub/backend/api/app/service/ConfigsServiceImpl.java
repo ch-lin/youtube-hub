@@ -48,9 +48,9 @@ import ch.lin.youtube.hub.backend.api.app.config.HubDefaultProperties;
 import ch.lin.youtube.hub.backend.api.app.repository.HubConfigRepository;
 import ch.lin.youtube.hub.backend.api.app.service.command.CreateConfigCommand;
 import ch.lin.youtube.hub.backend.api.app.service.command.UpdateConfigCommand;
+import ch.lin.youtube.hub.backend.api.app.service.event.ConfigUpdatedEvent;
 import ch.lin.youtube.hub.backend.api.app.service.model.AllConfigsData;
 import ch.lin.youtube.hub.backend.api.app.service.model.TimeZoneOption;
-import ch.lin.youtube.hub.backend.api.app.service.event.ConfigUpdatedEvent;
 import ch.lin.youtube.hub.backend.api.domain.model.HubConfig;
 
 /**
@@ -74,11 +74,11 @@ public class ConfigsServiceImpl implements ConfigsService {
     /**
      * Constructs the service with its required dependencies.
      *
-     * @param hubConfigRepository The repository for {@link HubConfig} entities.
-     * @param defaultProperties The externalized properties for the default
-     * config.
+     * @param hubConfigRepository  The repository for {@link HubConfig} entities.
+     * @param defaultProperties    The externalized properties for the default
+     *                             config.
      * @param defaultConfigFactory The factory for creating default config
-     * instances.
+     *                             instances.
      */
     public ConfigsServiceImpl(HubConfigRepository hubConfigRepository, HubDefaultProperties defaultProperties,
             DefaultConfigFactory defaultConfigFactory, ApplicationEventPublisher eventPublisher) {
@@ -102,10 +102,10 @@ public class ConfigsServiceImpl implements ConfigsService {
         }
         List<String> allNames = hubConfigRepository.findAll()
                 .stream()
-                .map(HubConfig::getName).collect(Collectors.toList());
+                .map(config -> config.getName()).collect(Collectors.toList());
 
         String enabledConfigName = hubConfigRepository.findFirstByEnabledTrue()
-                .map(HubConfig::getName)
+                .map(config -> config.getName())
                 .orElse("default"); // Fallback to 'default' if no config is explicitly enabled
         return new AllConfigsData(enabledConfigName, allNames);
     }
@@ -216,7 +216,7 @@ public class ConfigsServiceImpl implements ConfigsService {
     public HubConfig getConfig(String name) {
         return hubConfigRepository.findByName(name)
                 .or(() -> "default".equalsIgnoreCase(name) ? Optional.of(findOrCreateDefaultConfig())
-                : Optional.empty())
+                        : Optional.empty())
                 .orElseThrow(() -> new ConfigNotFoundException("Configuration with name '" + name + "' not found."));
     }
 
@@ -323,7 +323,8 @@ public class ConfigsServiceImpl implements ConfigsService {
 
             // Note: Setters are intentionally used here on the managed JPA entity.
             // If any values are missing, they are populated from application properties
-            // and will be automatically persisted back to the database via JPA dirty checking.
+            // and will be automatically persisted back to the database via JPA dirty
+            // checking.
             // This serves as an auto-healing mechanism for the configurations.
             if (dbConfig.getEnabled() == null) {
                 dbConfig.setEnabled(defaultConfig.getEnabled());
@@ -375,7 +376,7 @@ public class ConfigsServiceImpl implements ConfigsService {
      *
      * @return The 'default' {@link HubConfig} entity.
      * @throws ConfigCreationException if the default configuration cannot be
-     * created from application properties.
+     *                                 created from application properties.
      */
     private HubConfig findOrCreateDefaultConfig() {
         return hubConfigRepository.findByName("default").orElseGet(() -> {
@@ -408,7 +409,8 @@ public class ConfigsServiceImpl implements ConfigsService {
     public List<TimeZoneOption> getTimeZones() {
         String systemZoneId = ZoneId.systemDefault().getId();
         return ZoneId.getAvailableZoneIds().stream()
-                // Filter out technical or deprecated IDs (e.g., Etc/, SystemV/, 3-letter codes without slash)
+                // Filter out technical or deprecated IDs (e.g., Etc/, SystemV/, 3-letter codes
+                // without slash)
                 .filter(id -> id.contains("/") && !id.startsWith("Etc/") && !id.startsWith("SystemV/"))
                 .map(id -> {
                     ZoneId zoneId = ZoneId.of(id);
@@ -427,7 +429,7 @@ public class ConfigsServiceImpl implements ConfigsService {
                         return 2;
                     }
                     return 3;
-                }).thenComparing(TimeZoneOption::id))
+                }).thenComparing(option -> option.id()))
                 .collect(Collectors.toList());
     }
 
@@ -459,7 +461,7 @@ public class ConfigsServiceImpl implements ConfigsService {
      *
      * @param cronExpression The Cron expression string to validate.
      * @throws InvalidRequestException if the expression is not null/empty and
-     * is invalid.
+     *                                 is invalid.
      */
     private void validateCronExpression(String cronExpression) {
         if (StringUtils.hasText(cronExpression) && !CronExpression.isValidExpression(cronExpression)) {
@@ -472,7 +474,7 @@ public class ConfigsServiceImpl implements ConfigsService {
      *
      * @param cronTimeZone The time zone ID to validate (e.g., "Asia/Taipei").
      * @throws InvalidRequestException if the time zone ID is not null/empty and
-     * is invalid.
+     *                                 is invalid.
      */
     private void validateCronTimeZone(String cronTimeZone) {
         if (StringUtils.hasText(cronTimeZone)) {
