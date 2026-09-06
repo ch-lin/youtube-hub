@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
 public class CsvProcessingException extends RuntimeException {
 
+    private static final long serialVersionUID = 1L;
+
     public CsvProcessingException(String message) {
         super(message);
     }

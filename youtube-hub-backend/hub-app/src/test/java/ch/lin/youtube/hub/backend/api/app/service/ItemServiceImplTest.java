@@ -687,11 +687,11 @@ class ItemServiceImplTest {
                             videoId,status,width,height
                             vid1,DOWNLOADED,1920,1080
                             vid2,PENDING,1280,720
-                            
+
                             vid3,FAILED,,
                             vid4
                             vid5,,800,600
-                            vid6,   ,   ,   
+                            vid6,   ,   ,
                             """ // Blank line testing
                 // Partial empty testing
                 ; // Only ID testing and blank status testing

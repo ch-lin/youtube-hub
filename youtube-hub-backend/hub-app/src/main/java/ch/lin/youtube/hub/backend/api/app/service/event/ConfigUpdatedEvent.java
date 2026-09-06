@@ -7,6 +7,8 @@ import org.springframework.context.ApplicationEvent;
  */
 public class ConfigUpdatedEvent extends ApplicationEvent {
 
+    private static final long serialVersionUID = 1L;
+
     public ConfigUpdatedEvent(Object source) {
         super(source);
     }
